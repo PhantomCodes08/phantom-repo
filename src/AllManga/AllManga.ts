@@ -30,7 +30,8 @@ export const AllMangaInfo: SourceInfo = {
 
 type AllMangaItem = {
   _id: string
-  name: string
+  id?: string
+  name?: string
   englishName?: string | null
   nativeName?: string | null
   thumbnail?: string | null
@@ -39,21 +40,7 @@ type AllMangaItem = {
 export class AllManga extends Source {
   requestManager = App.createRequestManager({
     requestsPerSecond: 2,
-    requestTimeout: 20000,
-    interceptor: {
-      interceptRequest: async (request) => {
-        request.headers = {
-          ...request.headers,
-          referer: `${BASE_URL}/`,
-          origin: BASE_URL,
-          "user-agent": await this.requestManager.getDefaultUserAgent()
-        }
-        return request
-      },
-      interceptResponse: async (response) => {
-        return response
-      }
-    }
+    requestTimeout: 20000
   })
 
   override getMangaShareUrl(mangaId: string): string {
@@ -70,51 +57,74 @@ export class AllManga extends Source {
     return `${IMAGE_CDN}/${url.replace(/^\/+/, "")}`
   }
 
-  private makeSearchUrl(search: string, page: number): string {
-    const variables = {
-      search: {
-        query: search || undefined,
-        isManga: true,
-        allowAdult: true,
-        allowUnknown: false
+  private makeSearchPayload(search: string, page: number) {
+    return {
+      variables: {
+        search: {
+          query: search || undefined,
+          isManga: true,
+          allowAdult: true,
+          allowUnknown: false
+        },
+        size: 20,
+        page,
+        translationType: "sub",
+        countryOrigin: "ALL"
       },
-      limit: 26,
-      page,
-      translationType: "sub",
-      countryOrigin: "ALL"
-    }
-
-    const extensions = {
-      persistedQuery: {
-        version: 1,
-        sha256Hash: "72d48e19fb67ddcac42fbb885204b6abb0a84ff406f15ef83f36de4a66f4f9651"
+      extensions: {
+        persistedQuery: {
+          version: 1,
+          sha256Hash: "72d48e19fb67ddcac42fbb885204b6abb0a84ff406f15ef83f36de4a66f4f9651"
+        }
       }
     }
-
-    return `${API_URL}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify(extensions))}`
   }
 
   private async getMangaList(search: string, page: number): Promise<PartialSourceManga[]> {
     const request = App.createRequest({
-      url: this.makeSearchUrl(search, page),
-      method: "GET"
+      url: API_URL,
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Referer": `${BASE_URL}/`,
+        "Origin": BASE_URL
+      },
+      data: JSON.stringify(this.makeSearchPayload(search, page))
     })
 
     const response = await this.requestManager.schedule(request, 1)
     const json = JSON.parse(response.data as string)
 
-    const edges: AllMangaItem[] = json?.data?.mangas?.edges ?? []
+    const rawResults =
+      json?.data?.mangas?.edges ??
+      json?.data?.search?.edges ??
+      json?.data?.search ??
+      []
 
-    return edges
-      .filter((item) => item._id && (item.englishName || item.name))
-      .map((item) =>
+    const results: PartialSourceManga[] = []
+
+    for (const item of rawResults) {
+      const manga: AllMangaItem = item?.node ?? item
+
+      const mangaId = manga?._id ?? manga?.id
+      const title = manga?.englishName || manga?.name || manga?.nativeName
+      const image = this.fixImage(manga?.thumbnail)
+
+      if (!mangaId || !title) {
+        continue
+      }
+
+      results.push(
         App.createPartialSourceManga({
-          mangaId: item._id,
-          image: this.fixImage(item.thumbnail),
-          title: item.englishName || item.name,
-          subtitle: item.nativeName || "AllManga"
+          mangaId,
+          image,
+          title,
+          subtitle: "AllManga"
         })
       )
+    }
+
+    return results
   }
 
   async getMangaDetails(mangaId: string) {
@@ -122,7 +132,7 @@ export class AllManga extends Source {
       id: mangaId,
       mangaInfo: App.createMangaInfo({
         titles: [mangaId],
-        image: "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx105398-b673Vt5ZSuz3.jpg",
+        image: "",
         desc: "Details parser not connected yet.",
         status: "unknown"
       })
@@ -149,7 +159,7 @@ export class AllManga extends Source {
 
     return App.createPagedResults({
       results,
-      metadata: results.length > 0 ? { page: page + 1 } : undefined
+      metadata: results.length >= 20 ? { page: page + 1 } : undefined
     })
   }
 
@@ -164,16 +174,7 @@ export class AllManga extends Source {
 
     sectionCallback(section)
 
-    const testTile = App.createPartialSourceManga({
-      mangaId: "test-tile",
-      image: "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx105398-b673Vt5ZSuz3.jpg",
-      title: "TEST TILE - If you see this, tiles work",
-      subtitle: "Debug"
-    })
-
-    const apiTiles = await this.getMangaList("solo", 1)
-
-    section.items = [testTile, ...apiTiles]
+    section.items = await this.getMangaList("solo", 1)
     sectionCallback(section)
   }
 
