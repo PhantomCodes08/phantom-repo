@@ -14,7 +14,7 @@ import {
 
 const BASE_URL = "https://allmanga.to"
 const API_URL = "https://api.allanime.day/api"
-const CDN_URL = "https://cdn.allanime.day"
+const CDN_URL = "https://wp.youtube-anime.com/aln.youtube-anime.com"
 
 export const AllMangaInfo: SourceInfo = {
   version: "0.0.2",
