@@ -465,33 +465,8 @@ const types_1 = require("@paperback/types");
 const SITE = "https://allmanga.to";
 const API = "https://api.allanime.day/api";
 const COVER_CDN = "https://wp.youtube-anime.com";
-const ALLMANGA_SEARCH_QUERY = `
-query (
-  $search: SearchInput,
-  $size: Int,
-  $page: Int,
-  $translationType: VaildTranslationTypeEnumType,
-  $countryOrigin: VaildCountryOriginEnumType
-) {
-  mangas(
-    search: $search,
-    limit: $size,
-    page: $page,
-    translationType: $translationType,
-    countryOrigin: $countryOrigin
-  ) {
-    edges {
-      _id
-      name
-      englishName
-      nativeName
-      thumbnail
-    }
-  }
-}
-`;
 exports.AllMangaInfo = {
-    version: "0.1.2",
+    version: "0.1.3",
     name: "AllManga",
     icon: "icon.png",
     author: "Phantom",
@@ -517,38 +492,39 @@ class AllManga extends types_1.Source {
     cover(path) {
         if (!path)
             return "";
-        if (path.startsWith("http://") || path.startsWith("https://")) {
+        if (path.startsWith("http"))
             return encodeURI(path);
-        }
         return encodeURI(`${COVER_CDN}/${path.replace(/^\/+/, "")}`);
     }
-    searchBody(keyword, page) {
-        return JSON.stringify({
-            query: ALLMANGA_SEARCH_QUERY,
-            variables: {
-                search: {
-                    query: keyword.trim().length > 0 ? keyword.trim() : undefined,
-                    isManga: true,
-                    allowAdult: true,
-                    allowUnknown: false
-                },
-                size: 20,
-                page,
-                translationType: "sub",
-                countryOrigin: "ALL"
+    searchUrl(keyword, page) {
+        const variables = {
+            search: {
+                query: keyword.trim().length > 0 ? keyword.trim() : undefined,
+                isManga: true,
+                allowAdult: true,
+                allowUnknown: false
+            },
+            limit: 20,
+            page,
+            translationType: "sub",
+            countryOrigin: "ALL"
+        };
+        const extensions = {
+            persistedQuery: {
+                version: 1,
+                sha256Hash: "72d48e19fb67ddcac42fbb885204b6abb0a84ff406f15ef83f36de4a66f4f9651"
             }
-        });
+        };
+        return `${API}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify(extensions))}`;
     }
     async fetchTiles(keyword, page) {
         const request = App.createRequest({
-            url: API,
-            method: "POST",
+            url: this.searchUrl(keyword, page),
+            method: "GET",
             headers: {
-                "Content-Type": "application/json",
                 "Referer": `${SITE}/`,
                 "Origin": SITE
-            },
-            data: this.searchBody(keyword, page)
+            }
         });
         const response = await this.requestManager.schedule(request, 1);
         const parsed = JSON.parse(response.data);
