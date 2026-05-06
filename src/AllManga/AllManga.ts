@@ -162,56 +162,34 @@ export class AllManga extends Source {
     })
   }
 
-  // ------------------------------------------------------------
-  // DEBUG SEARCH (always returns something)
-  // ------------------------------------------------------------
+ 
   async getSearchResults(query: SearchRequest, metadata: any): Promise<PagedResults> {
-    const results: PartialSourceManga[] = [
-      App.createPartialSourceManga({
-        mangaId: "debug-search-1",
-        image: "https://via.placeholder.com/256?text=Search",
-        title: `Search: ${query.title ?? "no query"}`,
-        subtitle: "Static debug result"
-      })
-    ]
+  const results = await this.fetchTiles(query.title ?? "", 1)
 
-    return App.createPagedResults({
-      results,
-      metadata: undefined
-    })
-  }
+  return App.createPagedResults({
+    results,
+    metadata: undefined
+  })
+}
 
-  // ------------------------------------------------------------
-  // DEBUG HOMEPAGE (always returns something)
-  // ------------------------------------------------------------
+
   async getHomePageSections(sectionCallback: (section: HomeSection) => void): Promise<void> {
-    const section = App.createHomeSection({
-      id: "phantom-debug",
-      title: "Phantom Debug Section",
-      items: [],
-      containsMoreItems: false,
-      type: "singleRowNormal"
-    })
 
-    sectionCallback(section)
+  const section = App.createHomeSection({
+    id: "trending",
+    title: "Trending",
+    type: "singleRowNormal",
+    items: [],
+    containsMoreItems: false
+  })
 
-    section.items = [
-      App.createPartialSourceManga({
-        mangaId: "debug-manga-1",
-        image: "https://via.placeholder.com/256?text=Debug+1",
-        title: "Debug Manga 1",
-        subtitle: "If you see this, UI works"
-      }),
-      App.createPartialSourceManga({
-        mangaId: "debug-manga-2",
-        image: "https://via.placeholder.com/256?text=Debug+2",
-        title: "Debug Manga 2",
-        subtitle: "API is the only thing left"
-      })
-    ]
+  sectionCallback(section)
 
-    sectionCallback(section)
-  }
+  const results = await this.fetchTiles("", 1)
+  section.items = results
+
+  sectionCallback(section)
+}
 
   async getTags(): Promise<TagSection[]> {
     return []

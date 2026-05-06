@@ -588,49 +588,24 @@ class AllManga extends types_1.Source {
             pages: []
         });
     }
-    // ------------------------------------------------------------
-    // DEBUG SEARCH (always returns something)
-    // ------------------------------------------------------------
     async getSearchResults(query, metadata) {
-        const results = [
-            App.createPartialSourceManga({
-                mangaId: "debug-search-1",
-                image: "https://via.placeholder.com/256?text=Search",
-                title: `Search: ${query.title ?? "no query"}`,
-                subtitle: "Static debug result"
-            })
-        ];
+        const results = await this.fetchTiles(query.title ?? "", 1);
         return App.createPagedResults({
             results,
             metadata: undefined
         });
     }
-    // ------------------------------------------------------------
-    // DEBUG HOMEPAGE (always returns something)
-    // ------------------------------------------------------------
     async getHomePageSections(sectionCallback) {
         const section = App.createHomeSection({
-            id: "phantom-debug",
-            title: "Phantom Debug Section",
+            id: "trending",
+            title: "Trending",
+            type: "singleRowNormal",
             items: [],
-            containsMoreItems: false,
-            type: "singleRowNormal"
+            containsMoreItems: false
         });
         sectionCallback(section);
-        section.items = [
-            App.createPartialSourceManga({
-                mangaId: "debug-manga-1",
-                image: "https://via.placeholder.com/256?text=Debug+1",
-                title: "Debug Manga 1",
-                subtitle: "If you see this, UI works"
-            }),
-            App.createPartialSourceManga({
-                mangaId: "debug-manga-2",
-                image: "https://via.placeholder.com/256?text=Debug+2",
-                title: "Debug Manga 2",
-                subtitle: "API is the only thing left"
-            })
-        ];
+        const results = await this.fetchTiles("", 1);
+        section.items = results;
         sectionCallback(section);
     }
     async getTags() {
