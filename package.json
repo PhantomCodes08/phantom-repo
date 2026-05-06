@@ -1,0 +1,21 @@
+{
+  "name": "phantom-paperback-sources",
+  "version": "1.0.0",
+  "repositoryName": "Phantom Sources",
+  "description": "Custom Paperback extension repository",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "npx paperback test",
+    "bundle": "npx paperback bundle",
+    "serve": "npx paperback serve",
+    "dev": "npx nodemon --watch \"**/*.ts\" --ext \"js ts\" --exec \"npm run serve\""
+  },
+  "dependencies": {
+    "@paperback/toolchain": "0.8.0-alpha.47",
+    "@paperback/types": "0.8.0-alpha.47"
+  },
+  "devDependencies": {
+    "typescript": "^4.3.2",
+    "nodemon": "^3.1.0"
+  }
+}

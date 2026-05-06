@@ -1,0 +1,11 @@
+{
+  "id": "allmanga",
+  "name": "AllManga",
+  "version": "0.0.1",
+  "icon": "icon.png",
+  "author": "Phantom",
+  "description": "AllManga source for Paperback.",
+  "website": "https://allmanga.to",
+  "contentRating": "MATURE",
+  "language": "en"
+}
