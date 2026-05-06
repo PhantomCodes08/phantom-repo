@@ -466,7 +466,7 @@ const BASE_URL = "https://allmanga.to";
 const API_URL = "https://api.allanime.day/api";
 const IMAGE_CDN = "https://wp.youtube-anime.com";
 exports.AllMangaInfo = {
-    version: "0.0.5",
+    version: "0.0.6",
     name: "AllManga",
     icon: "icon.png",
     author: "Phantom",
@@ -480,7 +480,7 @@ class AllManga extends types_1.Source {
     constructor() {
         super(...arguments);
         this.requestManager = App.createRequestManager({
-            requestsPerSecond: 2,
+            requestsPerSecond: 1,
             requestTimeout: 20000
         });
     }
@@ -490,16 +490,15 @@ class AllManga extends types_1.Source {
     fixImage(url) {
         if (!url)
             return "";
-        if (url.startsWith("http")) {
+        if (url.startsWith("http"))
             return url;
-        }
         return `${IMAGE_CDN}/${url.replace(/^\/+/, "")}`;
     }
     makeSearchPayload(search, page) {
         return {
             variables: {
                 search: {
-                    query: search || undefined,
+                    query: search.length > 0 ? search : undefined,
                     isManga: true,
                     allowAdult: true,
                     allowUnknown: false
@@ -523,31 +522,22 @@ class AllManga extends types_1.Source {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Referer": `${BASE_URL}/`,
-                "Origin": BASE_URL
+                "Referer": `${BASE_URL}/`
             },
             data: JSON.stringify(this.makeSearchPayload(search, page))
         });
         const response = await this.requestManager.schedule(request, 1);
         const json = JSON.parse(response.data);
-        const rawResults = json?.data?.mangas?.edges ??
-            json?.data?.search?.edges ??
-            json?.data?.search ??
-            [];
+        const edges = json?.data?.mangas?.edges ?? [];
         const results = [];
-        for (const item of rawResults) {
-            const manga = item?.node ?? item;
-            const mangaId = manga?._id ?? manga?.id;
-            const title = manga?.englishName || manga?.name || manga?.nativeName;
-            const image = this.fixImage(manga?.thumbnail);
-            if (!mangaId || !title) {
+        for (const manga of edges) {
+            if (!manga?._id || !manga?.name)
                 continue;
-            }
             results.push(App.createPartialSourceManga({
-                mangaId,
-                image,
-                title,
-                subtitle: "AllManga"
+                mangaId: manga._id,
+                image: encodeURI(this.fixImage(manga.thumbnail)),
+                title: manga.englishName || manga.name,
+                subtitle: manga.nativeName || undefined
             }));
         }
         return results;
@@ -579,7 +569,7 @@ class AllManga extends types_1.Source {
         const results = await this.getMangaList(searchQuery, page);
         return App.createPagedResults({
             results,
-            metadata: results.length >= 20 ? { page: page + 1 } : undefined
+            metadata: results.length === 20 ? { page: page + 1 } : undefined
         });
     }
     async getHomePageSections(sectionCallback) {

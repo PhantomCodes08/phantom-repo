@@ -17,7 +17,7 @@ const API_URL = "https://api.allanime.day/api"
 const IMAGE_CDN = "https://wp.youtube-anime.com"
 
 export const AllMangaInfo: SourceInfo = {
-  version: "0.0.5",
+  version: "0.0.6",
   name: "AllManga",
   icon: "icon.png",
   author: "Phantom",
@@ -30,8 +30,7 @@ export const AllMangaInfo: SourceInfo = {
 
 type AllMangaItem = {
   _id: string
-  id?: string
-  name?: string
+  name: string
   englishName?: string | null
   nativeName?: string | null
   thumbnail?: string | null
@@ -39,7 +38,7 @@ type AllMangaItem = {
 
 export class AllManga extends Source {
   requestManager = App.createRequestManager({
-    requestsPerSecond: 2,
+    requestsPerSecond: 1,
     requestTimeout: 20000
   })
 
@@ -49,11 +48,7 @@ export class AllManga extends Source {
 
   private fixImage(url?: string | null): string {
     if (!url) return ""
-
-    if (url.startsWith("http")) {
-      return url
-    }
-
+    if (url.startsWith("http")) return url
     return `${IMAGE_CDN}/${url.replace(/^\/+/, "")}`
   }
 
@@ -61,7 +56,7 @@ export class AllManga extends Source {
     return {
       variables: {
         search: {
-          query: search || undefined,
+          query: search.length > 0 ? search : undefined,
           isManga: true,
           allowAdult: true,
           allowUnknown: false
@@ -86,8 +81,7 @@ export class AllManga extends Source {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Referer": `${BASE_URL}/`,
-        "Origin": BASE_URL
+        "Referer": `${BASE_URL}/`
       },
       data: JSON.stringify(this.makeSearchPayload(search, page))
     })
@@ -95,31 +89,19 @@ export class AllManga extends Source {
     const response = await this.requestManager.schedule(request, 1)
     const json = JSON.parse(response.data as string)
 
-    const rawResults =
-      json?.data?.mangas?.edges ??
-      json?.data?.search?.edges ??
-      json?.data?.search ??
-      []
+    const edges: AllMangaItem[] = json?.data?.mangas?.edges ?? []
 
     const results: PartialSourceManga[] = []
 
-    for (const item of rawResults) {
-      const manga: AllMangaItem = item?.node ?? item
-
-      const mangaId = manga?._id ?? manga?.id
-      const title = manga?.englishName || manga?.name || manga?.nativeName
-      const image = this.fixImage(manga?.thumbnail)
-
-      if (!mangaId || !title) {
-        continue
-      }
+    for (const manga of edges) {
+      if (!manga?._id || !manga?.name) continue
 
       results.push(
         App.createPartialSourceManga({
-          mangaId,
-          image,
-          title,
-          subtitle: "AllManga"
+          mangaId: manga._id,
+          image: encodeURI(this.fixImage(manga.thumbnail)),
+          title: manga.englishName || manga.name,
+          subtitle: manga.nativeName || undefined
         })
       )
     }
@@ -159,7 +141,7 @@ export class AllManga extends Source {
 
     return App.createPagedResults({
       results,
-      metadata: results.length >= 20 ? { page: page + 1 } : undefined
+      metadata: results.length === 20 ? { page: page + 1 } : undefined
     })
   }
 
