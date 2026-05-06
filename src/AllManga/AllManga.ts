@@ -163,7 +163,7 @@ export class AllManga extends Source {
   }
 
  
-  async getSearchResults(query: SearchRequest, metadata: any): Promise<PagedResults> {
+ async getSearchResults(query: SearchRequest, metadata: any): Promise<PagedResults> {
   const results = await this.fetchTiles(query.title ?? "", 1)
 
   return App.createPagedResults({
@@ -171,7 +171,6 @@ export class AllManga extends Source {
     metadata: undefined
   })
 }
-
 
   async getHomePageSections(sectionCallback: (section: HomeSection) => void): Promise<void> {
 
