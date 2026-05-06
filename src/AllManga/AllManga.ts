@@ -46,10 +46,14 @@ export class AllManga extends Source {
   }
 
   private fixImage(url?: string | null): string {
-    if (!url) return ""
-    if (url.startsWith("http")) return url
-    return `${CDN_URL}/${url}`
+  if (!url) return ""
+
+  if (url.startsWith("http")) {
+    return url
   }
+
+  return `https://wp.youtube-anime.com/${url}`
+}
 
   private makeSearchUrl(search: string, page: number): string {
     const variables = {
