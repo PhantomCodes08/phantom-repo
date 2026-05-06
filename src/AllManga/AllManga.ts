@@ -11,6 +11,8 @@ import {
   TagSection
 } from "@paperback/types"
 
+import { AllMangaParser } from "./AllMangaParser"
+
 const BASE_URL = "https://allmanga.to"
 
 export const AllMangaInfo: SourceInfo = {
@@ -30,6 +32,8 @@ export class AllManga extends Source {
     requestsPerSecond: 4,
     requestTimeout: 20000
   })
+
+  parser = new AllMangaParser()
 
   override getMangaShareUrl(mangaId: string): string {
     return `${BASE_URL}/manga/${mangaId}`
@@ -67,10 +71,19 @@ export class AllManga extends Source {
   }
 
   override async getHomePageSections(sectionCallback: (section: HomeSection) => void): Promise<void> {
+    const request = App.createRequest({
+      url: BASE_URL,
+      method: "GET"
+    })
+
+    const response = await this.requestManager.schedule(request, 1)
+    const $ = this.cheerio.load(response.data)
+    const items = this.parser.parseHomePage($)
+
     const section = App.createHomeSection({
-      id: "placeholder",
-      title: "AllManga",
-      items: [],
+      id: "popular",
+      title: "Popular",
+      items,
       containsMoreItems: false,
       type: "singleRowNormal"
     })
