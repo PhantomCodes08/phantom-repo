@@ -5,10 +5,11 @@
   "description": "Custom Paperback extension repository",
   "main": "lib/index.js",
   "scripts": {
-    "test": "npx paperback test",
+    "clean": "node scripts/clean.js",
     "bundle": "npx paperback bundle",
+    "rebuild": "npm run clean && npm run bundle",
     "serve": "npx paperback serve",
-    "dev": "npx nodemon --watch \"**/*.ts\" --ext \"js ts\" --exec \"npm run serve\""
+    "dev": "npx nodemon --watch \"src/**/*.ts\" --watch \"src/**/*.json\" --ext \"js ts json\" --exec \"npm run serve\""
   },
   "dependencies": {
     "@paperback/toolchain": "0.8.0-alpha.47",

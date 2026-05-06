@@ -1,0 +1,64 @@
+name: Build and Deploy Paperback Repo
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Paperback bundles
+        run: npm run rebuild
+
+      - name: Prepare gh-pages output
+        run: |
+          mkdir -p public/0.8
+          cp -r bundles/* public/0.8/
+          cp README.md public/README.md
+          touch public/.nojekyll
+          cat > public/index.html <<'HTML'
+          <!doctype html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <title>Phantom Sources</title>
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <style>
+                body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.5; }
+                code { background: #eee; padding: 2px 6px; border-radius: 4px; }
+              </style>
+            </head>
+            <body>
+              <h1>Phantom Sources</h1>
+              <p>Custom Paperback extension repository.</p>
+              <p>Paperback 0.8 URL:</p>
+              <p><code>https://phantomcodes08.github.io/phantom-repo/0.8/</code></p>
+            </body>
+          </html>
+          HTML
+
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+          publish_branch: gh-pages
+          force_orphan: true
