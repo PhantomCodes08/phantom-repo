@@ -17,7 +17,7 @@ const API = "https://api.allanime.day/api"
 const COVER_CDN = "https://wp.youtube-anime.com"
 
 export const AllMangaInfo: SourceInfo = {
-  version: "0.1.5",
+  version: "0.1.6",
   name: "AllManga",
   icon: "icon.png",
   author: "Phantom",

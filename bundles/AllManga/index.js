@@ -466,7 +466,7 @@ const SITE = "https://allmanga.to";
 const API = "https://api.allanime.day/api";
 const COVER_CDN = "https://wp.youtube-anime.com";
 exports.AllMangaInfo = {
-    version: "0.1.5",
+    version: "0.1.6",
     name: "AllManga",
     icon: "icon.png",
     author: "Phantom",
