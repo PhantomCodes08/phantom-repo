@@ -127,12 +127,6 @@ export class AllManga
 
     const raw = response.data as string
     const results = this.parser.parseSearchResults(raw)
-
-    if (results.length === 0) {
-      return this.parser.parseDebugTile(raw)
-    }
-
-    return results
   }
 
   async getSearchResults(query: SearchRequest, metadata: any): Promise<PagedResults> {
