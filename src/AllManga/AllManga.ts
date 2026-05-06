@@ -17,8 +17,6 @@ import {
   TagSection
 } from "@paperback/types"
 
-import { AllMangaParser } from "./AllMangaParser"
-
 const SITE = "https://allmanga.to"
 const API = "https://api.allanime.day/api"
 
