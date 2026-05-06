@@ -3,24 +3,20 @@ import {
   ChapterDetails,
   ContentRating,
   HomeSection,
-  HomePageSectionsProviding,
-  MangaProviding,
   PagedResults,
   PartialSourceManga,
-  Request,
-  Response,
   SearchRequest,
-  SearchResultsProviding,
+  Source,
   SourceInfo,
   SourceIntents,
-  SourceManga,
   TagSection
 } from "@paperback/types"
 
 const SITE = "https://allmanga.to"
 const API = "https://api.allanime.day/api"
+const COVER_CDN = "https://wp.youtube-anime.com"
 
-const SEARCH_QUERY = `
+const ALLMANGA_SEARCH_QUERY = `
 query (
   $search: SearchInput,
   $size: Int,
@@ -47,7 +43,7 @@ query (
 `
 
 export const AllMangaInfo: SourceInfo = {
-  version: "0.1.0",
+  version: "0.1.1",
   name: "AllManga",
   icon: "icon.png",
   author: "Phantom",
@@ -61,43 +57,53 @@ export const AllMangaInfo: SourceInfo = {
     SourceIntents.CLOUDFLARE_BYPASS_REQUIRED
 }
 
-export class AllManga
-  implements
-    SearchResultsProviding,
-    MangaProviding,
-    HomePageSectionsProviding
-{
-  baseUrl = SITE
-  apiUrl = API
-  parser = new AllMangaParser()
+type AllMangaResult = {
+  _id?: string
+  name?: string
+  englishName?: string | null
+  nativeName?: string | null
+  thumbnail?: string | null
+}
 
+export class AllManga extends Source {
   requestManager = App.createRequestManager({
     requestsPerSecond: 1,
     requestTimeout: 20000,
     interceptor: {
-      interceptRequest: async (request: Request): Promise<Request> => {
+      interceptRequest: async (request) => {
         request.headers = {
           ...(request.headers ?? {}),
-          "user-agent": await this.requestManager.getDefaultUserAgent(),
-          referer: `${this.baseUrl}/`,
-          origin: this.baseUrl,
-          "content-type": "application/json"
+          referer: `${SITE}/`,
+          origin: SITE,
+          "content-type": "application/json",
+          "user-agent": await this.requestManager.getDefaultUserAgent()
         }
+
         return request
       },
-      interceptResponse: async (response: Response): Promise<Response> => {
+      interceptResponse: async (response) => {
         return response
       }
     }
   })
 
   getMangaShareUrl(mangaId: string): string {
-    return `${this.baseUrl}/manga/${mangaId}`
+    return `${SITE}/manga/${mangaId}`
   }
 
-  private makeSearchBody(keyword: string, page: number): string {
+  private cover(path?: string | null): string {
+    if (!path) return ""
+
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      return encodeURI(path)
+    }
+
+    return encodeURI(`${COVER_CDN}/${path.replace(/^\/+/, "")}`)
+  }
+
+  private searchBody(keyword: string, page: number): string {
     return JSON.stringify({
-      query: SEARCH_QUERY,
+      query: ALLMANGA_SEARCH_QUERY,
       variables: {
         search: {
           query: keyword.trim().length > 0 ? keyword.trim() : undefined,
@@ -113,61 +119,39 @@ export class AllManga
     })
   }
 
-  private async requestSearch(keyword: string, page: number): Promise<PartialSourceManga[]> {
+  private async fetchTiles(keyword: string, page: number): Promise<PartialSourceManga[]> {
     const request = App.createRequest({
-      url: this.apiUrl,
+      url: API,
       method: "POST",
-      data: this.makeSearchBody(keyword, page)
+      data: this.searchBody(keyword, page)
     })
 
     const response = await this.requestManager.schedule(request, 1)
-    this.checkResponseError(response)
+    const parsed = JSON.parse(response.data as string)
 
-    const raw = response.data as string
-    const results = this.parser.parseSearchResults(raw)
+    const edges: AllMangaResult[] = parsed?.data?.mangas?.edges ?? []
+    const tiles: PartialSourceManga[] = []
+
+    for (const manga of edges) {
+      const id = manga._id
+      const title = manga.englishName || manga.name || manga.nativeName || ""
+
+      if (!id || !title) continue
+
+      tiles.push(
+        App.createPartialSourceManga({
+          mangaId: id,
+          image: this.cover(manga.thumbnail),
+          title,
+          subtitle: manga.nativeName || "AllManga"
+        })
+      )
+    }
+
+    return tiles
   }
 
-  async getSearchResults(query: SearchRequest, metadata: any): Promise<PagedResults> {
-    const page = metadata?.page ?? 1
-    const keyword = query.title ?? ""
-
-    const results = await this.requestSearch(keyword, page)
-
-    return App.createPagedResults({
-      results,
-      metadata: results.length === 20 ? { page: page + 1 } : undefined
-    })
-  }
-
-  async getHomePageSections(sectionCallback: (section: HomeSection) => void): Promise<void> {
-    const popular = App.createHomeSection({
-      id: "phantom-popular",
-      title: "Phantom Picks",
-      items: [],
-      containsMoreItems: true,
-      type: "singleRowNormal"
-    })
-
-    sectionCallback(popular)
-
-    popular.items = await this.requestSearch("solo", 1)
-    sectionCallback(popular)
-  }
-
-  async getViewMoreItems(
-    homepageSectionId: string,
-    metadata: any
-  ): Promise<PagedResults> {
-    const page = metadata?.page ?? 1
-    const results = await this.requestSearch("solo", page)
-
-    return App.createPagedResults({
-      results,
-      metadata: results.length === 20 ? { page: page + 1 } : undefined
-    })
-  }
-
-  async getMangaDetails(mangaId: string): Promise<SourceManga> {
+  async getMangaDetails(mangaId: string) {
     return App.createSourceManga({
       id: mangaId,
       mangaInfo: App.createMangaInfo({
@@ -191,32 +175,36 @@ export class AllManga
     })
   }
 
-  async getCloudflareBypassRequest(): Promise<Request> {
-    return App.createRequest({
-      url: this.baseUrl,
-      method: "GET",
-      headers: {
-        "user-agent": await this.requestManager.getDefaultUserAgent(),
-        referer: `${this.baseUrl}/`
-      }
+  async getSearchResults(query: SearchRequest, metadata: any): Promise<PagedResults> {
+    const page = metadata?.page ?? 1
+    const keyword = query.title ?? ""
+
+    const results = await this.fetchTiles(keyword, page)
+
+    return App.createPagedResults({
+      results,
+      metadata: results.length === 20 ? { page: page + 1 } : undefined
     })
+  }
+
+  async getHomePageSections(sectionCallback: (section: HomeSection) => void): Promise<void> {
+    const section = App.createHomeSection({
+      id: "phantom-popular",
+      title: "Phantom Picks",
+      items: [],
+      containsMoreItems: false,
+      type: "singleRowNormal"
+    })
+
+    sectionCallback(section)
+
+    section.items = await this.fetchTiles("solo", 1)
+    sectionCallback(section)
   }
 
   async getTags(): Promise<TagSection[]> {
     return []
   }
-
-  private checkResponseError(response: Response): void {
-    const status = response.status
-
-    if (status === 403 || status === 503) {
-      throw new Error(`AllManga Cloudflare/API error: ${status}. Tap the cloud icon for this source.`)
-    }
-
-    if (status === 404) {
-      throw new Error("AllManga endpoint not found. The API may have changed.")
-    }
-  }
 }
 
-export default AllManga
+export default AllMangas
