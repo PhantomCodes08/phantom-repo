@@ -14,10 +14,10 @@ import {
 
 const BASE_URL = "https://allmanga.to"
 const API_URL = "https://api.allanime.day/api"
-const CDN_URL = "https://wp.youtube-anime.com/aln.youtube-anime.com"
+const IMAGE_CDN = "https://wp.youtube-anime.com"
 
 export const AllMangaInfo: SourceInfo = {
-  version: "0.0.2",
+  version: "0.0.3",
   name: "AllManga",
   icon: "icon.png",
   author: "Phantom",
@@ -46,22 +46,24 @@ export class AllManga extends Source {
   }
 
   private fixImage(url?: string | null): string {
-  if (!url) return ""
+    if (!url) return ""
 
-  if (url.startsWith("http")) {
-    return url
+    if (url.startsWith("http")) {
+      return url
+    }
+
+    return `${IMAGE_CDN}/${url.replace(/^\/+/, "")}`
   }
-
-  return `https://wp.youtube-anime.com/${url}`
-}
 
   private makeSearchUrl(search: string, page: number): string {
     const variables = {
       search: {
-        query: search,
-        isManga: true
+        query: search || undefined,
+        isManga: true,
+        allowAdult: true,
+        allowUnknown: false
       },
-      limit: 26,
+      size: 20,
       page,
       translationType: "sub",
       countryOrigin: "ALL"
@@ -82,8 +84,8 @@ export class AllManga extends Source {
       url: this.makeSearchUrl(search, page),
       method: "GET",
       headers: {
-        "Referer": BASE_URL,
-        "Origin": BASE_URL
+        Referer: `${BASE_URL}/`,
+        Origin: BASE_URL
       }
     })
 
