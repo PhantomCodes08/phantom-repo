@@ -17,7 +17,7 @@ const API_URL = "https://api.allanime.day/api"
 const IMAGE_CDN = "https://wp.youtube-anime.com"
 
 export const AllMangaInfo: SourceInfo = {
-  version: "0.0.3",
+  version: "0.0.4",
   name: "AllManga",
   icon: "icon.png",
   author: "Phantom",
@@ -37,7 +37,7 @@ type AllMangaItem = {
 
 export class AllManga extends Source {
   requestManager = App.createRequestManager({
-    requestsPerSecond: 4,
+    requestsPerSecond: 2,
     requestTimeout: 20000
   })
 
@@ -55,38 +55,39 @@ export class AllManga extends Source {
     return `${IMAGE_CDN}/${url.replace(/^\/+/, "")}`
   }
 
-  private makeSearchUrl(search: string, page: number): string {
-    const variables = {
-      search: {
-        query: search || undefined,
-        isManga: true,
-        allowAdult: true,
-        allowUnknown: false
+  private makeSearchPayload(search: string, page: number) {
+    return {
+      variables: {
+        search: {
+          query: search || undefined,
+          isManga: true,
+          allowAdult: true,
+          allowUnknown: false
+        },
+        size: 20,
+        page,
+        translationType: "sub",
+        countryOrigin: "ALL"
       },
-      size: 20,
-      page,
-      translationType: "sub",
-      countryOrigin: "ALL"
-    }
-
-    const extensions = {
-      persistedQuery: {
-        version: 1,
-        sha256Hash: "72d48e19fb67ddcac42fbb885204b6abb0a84ff406f15ef83f36de4a66f4f9651"
+      extensions: {
+        persistedQuery: {
+          version: 1,
+          sha256Hash: "72d48e19fb67ddcac42fbb885204b6abb0a84ff406f15ef83f36de4a66f4f9651"
+        }
       }
     }
-
-    return `${API_URL}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify(extensions))}`
   }
 
   private async getMangaList(search: string, page: number): Promise<PartialSourceManga[]> {
     const request = App.createRequest({
-      url: this.makeSearchUrl(search, page),
-      method: "GET",
+      url: API_URL,
+      method: "POST",
       headers: {
-        Referer: `${BASE_URL}/`,
-        Origin: BASE_URL
-      }
+        "Content-Type": "application/json",
+        "Referer": `${BASE_URL}/`,
+        "Origin": BASE_URL
+      },
+      data: JSON.stringify(this.makeSearchPayload(search, page))
     })
 
     const response = await this.requestManager.schedule(request, 1)
@@ -98,7 +99,8 @@ export class AllManga extends Source {
       App.createPartialSourceManga({
         mangaId: item._id,
         image: this.fixImage(item.thumbnail),
-        title: item.englishName || item.name
+        title: item.englishName || item.name,
+        subtitle: "AllManga"
       })
     )
   }
