@@ -43,7 +43,7 @@ query (
 `
 
 export const AllMangaInfo: SourceInfo = {
-  version: "0.1.1",
+  version: "0.1.2",
   name: "AllManga",
   icon: "icon.png",
   author: "Phantom",
@@ -68,23 +68,7 @@ type AllMangaResult = {
 export class AllManga extends Source {
   requestManager = App.createRequestManager({
     requestsPerSecond: 1,
-    requestTimeout: 20000,
-    interceptor: {
-      interceptRequest: async (request) => {
-        request.headers = {
-          ...(request.headers ?? {}),
-          referer: `${SITE}/`,
-          origin: SITE,
-          "content-type": "application/json",
-          "user-agent": await this.requestManager.getDefaultUserAgent()
-        }
-
-        return request
-      },
-      interceptResponse: async (response) => {
-        return response
-      }
-    }
+    requestTimeout: 20000
   })
 
   getMangaShareUrl(mangaId: string): string {
@@ -123,6 +107,11 @@ export class AllManga extends Source {
     const request = App.createRequest({
       url: API,
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Referer": `${SITE}/`,
+        "Origin": SITE
+      },
       data: this.searchBody(keyword, page)
     })
 
@@ -130,25 +119,17 @@ export class AllManga extends Source {
     const parsed = JSON.parse(response.data as string)
 
     const edges: AllMangaResult[] = parsed?.data?.mangas?.edges ?? []
-    const tiles: PartialSourceManga[] = []
 
-    for (const manga of edges) {
-      const id = manga._id
-      const title = manga.englishName || manga.name || manga.nativeName || ""
-
-      if (!id || !title) continue
-
-      tiles.push(
+    return edges
+      .filter((manga) => manga._id && (manga.englishName || manga.name || manga.nativeName))
+      .map((manga) =>
         App.createPartialSourceManga({
-          mangaId: id,
+          mangaId: manga._id!,
           image: this.cover(manga.thumbnail),
-          title,
+          title: manga.englishName || manga.name || manga.nativeName || "Unknown Title",
           subtitle: manga.nativeName || "AllManga"
         })
       )
-    }
-
-    return tiles
   }
 
   async getMangaDetails(mangaId: string) {
@@ -189,7 +170,7 @@ export class AllManga extends Source {
 
   async getHomePageSections(sectionCallback: (section: HomeSection) => void): Promise<void> {
     const section = App.createHomeSection({
-      id: "phantom-popular",
+      id: "phantom-picks",
       title: "Phantom Picks",
       items: [],
       containsMoreItems: false,
@@ -207,4 +188,4 @@ export class AllManga extends Source {
   }
 }
 
-export default AllMangas
+export default AllManga

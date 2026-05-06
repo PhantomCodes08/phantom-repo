@@ -491,7 +491,7 @@ query (
 }
 `;
 exports.AllMangaInfo = {
-    version: "0.1.1",
+    version: "0.1.2",
     name: "AllManga",
     icon: "icon.png",
     author: "Phantom",
@@ -508,22 +508,7 @@ class AllManga extends types_1.Source {
         super(...arguments);
         this.requestManager = App.createRequestManager({
             requestsPerSecond: 1,
-            requestTimeout: 20000,
-            interceptor: {
-                interceptRequest: async (request) => {
-                    request.headers = {
-                        ...(request.headers ?? {}),
-                        referer: `${SITE}/`,
-                        origin: SITE,
-                        "content-type": "application/json",
-                        "user-agent": await this.requestManager.getDefaultUserAgent()
-                    };
-                    return request;
-                },
-                interceptResponse: async (response) => {
-                    return response;
-                }
-            }
+            requestTimeout: 20000
         });
     }
     getMangaShareUrl(mangaId) {
@@ -558,25 +543,24 @@ class AllManga extends types_1.Source {
         const request = App.createRequest({
             url: API,
             method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Referer": `${SITE}/`,
+                "Origin": SITE
+            },
             data: this.searchBody(keyword, page)
         });
         const response = await this.requestManager.schedule(request, 1);
         const parsed = JSON.parse(response.data);
         const edges = parsed?.data?.mangas?.edges ?? [];
-        const tiles = [];
-        for (const manga of edges) {
-            const id = manga._id;
-            const title = manga.englishName || manga.name || manga.nativeName || "";
-            if (!id || !title)
-                continue;
-            tiles.push(App.createPartialSourceManga({
-                mangaId: id,
-                image: this.cover(manga.thumbnail),
-                title,
-                subtitle: manga.nativeName || "AllManga"
-            }));
-        }
-        return tiles;
+        return edges
+            .filter((manga) => manga._id && (manga.englishName || manga.name || manga.nativeName))
+            .map((manga) => App.createPartialSourceManga({
+            mangaId: manga._id,
+            image: this.cover(manga.thumbnail),
+            title: manga.englishName || manga.name || manga.nativeName || "Unknown Title",
+            subtitle: manga.nativeName || "AllManga"
+        }));
     }
     async getMangaDetails(mangaId) {
         return App.createSourceManga({
@@ -610,7 +594,7 @@ class AllManga extends types_1.Source {
     }
     async getHomePageSections(sectionCallback) {
         const section = App.createHomeSection({
-            id: "phantom-popular",
+            id: "phantom-picks",
             title: "Phantom Picks",
             items: [],
             containsMoreItems: false,
@@ -625,7 +609,7 @@ class AllManga extends types_1.Source {
     }
 }
 exports.AllManga = AllManga;
-exports.default = AllMangas;
+exports.default = AllManga;
 
 },{"@paperback/types":61}]},{},[62])(62)
 });
