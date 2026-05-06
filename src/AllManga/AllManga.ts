@@ -59,29 +59,30 @@ export class AllManga extends Source {
     return encodeURI(`${COVER_CDN}/${path.replace(/^\/+/, "")}`)
   }
 
-  private searchUrl(keyword: string, page: number): string {
-    const variables = {
-      search: {
-        query: keyword.trim().length > 0 ? keyword.trim() : undefined,
-        isManga: true,
-        allowAdult: true,
-        allowUnknown: false
-      },
-      limit: 20,
-      page,
-      translationType: "sub",
-      countryOrigin: "ALL"
-    }
-
-    const extensions = {
-      persistedQuery: {
-        version: 1,
-        sha256Hash: "72d48e19fb67ddcac42fbb885204b6abb0a84ff406f15ef83f36de4a66f4f9651"
-      }
-    }
-
-    return `${API}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify(extensions))}`
+ private searchUrl(keyword: string, page: number): string {
+  const variables = {
+    search: {
+      query: keyword.trim(),
+      isManga: true,
+      allowAdult: true,
+      allowUnknown: false
+    },
+    limit: 20,
+    page,
+    translationType: "sub",
+    countryOrigin: "ALL"
   }
+
+  const extensions = {
+    persistedQuery: {
+      version: 1,
+      sha256Hash: "f8e3b7e6f4e2c0a1b1d8e3c4f7a9d2c1e0b3f6a7c9d8e1f2b3c4d5e6f7a8b9c0"
+    }
+  }
+
+  return `${API}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify(extensions))}`
+}
+
 
   // ------------------------------------------------------------
   // DEBUG + SAFE API WRAPPER

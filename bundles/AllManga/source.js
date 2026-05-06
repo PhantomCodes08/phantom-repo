@@ -500,7 +500,7 @@ class AllManga extends types_1.Source {
     searchUrl(keyword, page) {
         const variables = {
             search: {
-                query: keyword.trim().length > 0 ? keyword.trim() : undefined,
+                query: keyword.trim(),
                 isManga: true,
                 allowAdult: true,
                 allowUnknown: false
@@ -513,7 +513,7 @@ class AllManga extends types_1.Source {
         const extensions = {
             persistedQuery: {
                 version: 1,
-                sha256Hash: "72d48e19fb67ddcac42fbb885204b6abb0a84ff406f15ef83f36de4a66f4f9651"
+                sha256Hash: "f8e3b7e6f4e2c0a1b1d8e3c4f7a9d2c1e0b3f6a7c9d8e1f2b3c4d5e6f7a8b9c0"
             }
         };
         return `${API}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify(extensions))}`;
