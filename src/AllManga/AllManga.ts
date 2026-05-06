@@ -16,8 +16,34 @@ const BASE_URL = "https://allmanga.to"
 const API_URL = "https://api.allanime.day/api"
 const IMAGE_CDN = "https://wp.youtube-anime.com"
 
+const SEARCH_QUERY = `
+query (
+  $search: SearchInput,
+  $size: Int,
+  $page: Int,
+  $translationType: VaildTranslationTypeEnumType,
+  $countryOrigin: VaildCountryOriginEnumType
+) {
+  mangas(
+    search: $search,
+    limit: $size,
+    page: $page,
+    translationType: $translationType,
+    countryOrigin: $countryOrigin
+  ) {
+    edges {
+      _id
+      name
+      englishName
+      nativeName
+      thumbnail
+    }
+  }
+}
+`
+
 export const AllMangaInfo: SourceInfo = {
-  version: "0.0.6",
+  version: "0.0.7",
   name: "AllManga",
   icon: "icon.png",
   author: "Phantom",
@@ -54,6 +80,7 @@ export class AllManga extends Source {
 
   private makeSearchPayload(search: string, page: number) {
     return {
+      query: SEARCH_QUERY,
       variables: {
         search: {
           query: search.length > 0 ? search : undefined,
@@ -65,12 +92,6 @@ export class AllManga extends Source {
         page,
         translationType: "sub",
         countryOrigin: "ALL"
-      },
-      extensions: {
-        persistedQuery: {
-          version: 1,
-          sha256Hash: "72d48e19fb67ddcac42fbb885204b6abb0a84ff406f15ef83f36de4a66f4f9651"
-        }
       }
     }
   }
@@ -91,22 +112,14 @@ export class AllManga extends Source {
 
     const edges: AllMangaItem[] = json?.data?.mangas?.edges ?? []
 
-    const results: PartialSourceManga[] = []
-
-    for (const manga of edges) {
-      if (!manga?._id || !manga?.name) continue
-
-      results.push(
-        App.createPartialSourceManga({
-          mangaId: manga._id,
-          image: encodeURI(this.fixImage(manga.thumbnail)),
-          title: manga.englishName || manga.name,
-          subtitle: manga.nativeName || undefined
-        })
-      )
-    }
-
-    return results
+    return edges.map((manga) =>
+      App.createPartialSourceManga({
+        mangaId: manga._id,
+        image: this.fixImage(manga.thumbnail),
+        title: manga.englishName || manga.name,
+        subtitle: manga.nativeName || "AllManga"
+      })
+    )
   }
 
   async getMangaDetails(mangaId: string) {
