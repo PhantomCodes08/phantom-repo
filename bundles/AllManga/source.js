@@ -463,8 +463,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AllManga = exports.AllMangaInfo = void 0;
 const types_1 = require("@paperback/types");
 const BASE_URL = "https://allmanga.to";
+const API_URL = "https://api.allanime.day/api";
+const IMAGE_CDN = "https://wp.youtube-anime.com";
 exports.AllMangaInfo = {
-    version: "0.0.1",
+    version: "0.0.4",
     name: "AllManga",
     icon: "icon.png",
     author: "Phantom",
@@ -478,12 +480,63 @@ class AllManga extends types_1.Source {
     constructor() {
         super(...arguments);
         this.requestManager = App.createRequestManager({
-            requestsPerSecond: 4,
+            requestsPerSecond: 2,
             requestTimeout: 20000
         });
     }
     getMangaShareUrl(mangaId) {
         return `${BASE_URL}/manga/${mangaId}`;
+    }
+    fixImage(url) {
+        if (!url)
+            return "";
+        if (url.startsWith("http")) {
+            return url;
+        }
+        return `${IMAGE_CDN}/${url.replace(/^\/+/, "")}`;
+    }
+    makeSearchPayload(search, page) {
+        return {
+            variables: {
+                search: {
+                    query: search || undefined,
+                    isManga: true,
+                    allowAdult: true,
+                    allowUnknown: false
+                },
+                size: 20,
+                page,
+                translationType: "sub",
+                countryOrigin: "ALL"
+            },
+            extensions: {
+                persistedQuery: {
+                    version: 1,
+                    sha256Hash: "72d48e19fb67ddcac42fbb885204b6abb0a84ff406f15ef83f36de4a66f4f9651"
+                }
+            }
+        };
+    }
+    async getMangaList(search, page) {
+        const request = App.createRequest({
+            url: API_URL,
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Referer": `${BASE_URL}/`,
+                "Origin": BASE_URL
+            },
+            data: JSON.stringify(this.makeSearchPayload(search, page))
+        });
+        const response = await this.requestManager.schedule(request, 1);
+        const json = JSON.parse(response.data);
+        const edges = json?.data?.mangas?.edges ?? [];
+        return edges.map((item) => App.createPartialSourceManga({
+            mangaId: item._id,
+            image: this.fixImage(item.thumbnail),
+            title: item.englishName || item.name,
+            subtitle: "AllManga"
+        }));
     }
     async getMangaDetails(mangaId) {
         return App.createSourceManga({
@@ -491,7 +544,7 @@ class AllManga extends types_1.Source {
             mangaInfo: App.createMangaInfo({
                 titles: [mangaId],
                 image: "",
-                desc: "Placeholder source. AllManga parser is not connected yet.",
+                desc: "Details parser not connected yet.",
                 status: "unknown"
             })
         });
@@ -507,19 +560,24 @@ class AllManga extends types_1.Source {
         });
     }
     async getSearchResults(query, metadata) {
+        const page = metadata?.page ?? 1;
+        const searchQuery = query.title ?? "";
+        const results = await this.getMangaList(searchQuery, page);
         return App.createPagedResults({
-            results: [],
-            metadata: undefined
+            results,
+            metadata: { page: page + 1 }
         });
     }
     async getHomePageSections(sectionCallback) {
         const section = App.createHomeSection({
-            id: "placeholder",
-            title: "AllManga",
+            id: "popular",
+            title: "Popular",
             items: [],
             containsMoreItems: false,
             type: "singleRowNormal"
         });
+        sectionCallback(section);
+        section.items = await this.getMangaList("solo", 1);
         sectionCallback(section);
     }
     async getTags() {
