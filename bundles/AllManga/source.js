@@ -462,10 +462,10 @@ __exportStar(require("./compat/DyamicUI"), exports);
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AllManga = exports.AllMangaInfo = void 0;
 const types_1 = require("@paperback/types");
-const BASE_URL = "https://allmanga.to";
-const API_URL = "https://api.allanime.day/api";
-const IMAGE_CDN = "https://wp.youtube-anime.com";
-const SEARCH_QUERY = `
+const SITE = "https://allmanga.to";
+const API = "https://api.allanime.day/api";
+const COVER_CDN = "https://wp.youtube-anime.com";
+const ALLMANGA_SEARCH_QUERY = `
 query (
   $search: SearchInput,
   $size: Int,
@@ -491,40 +491,58 @@ query (
 }
 `;
 exports.AllMangaInfo = {
-    version: "0.0.7",
+    version: "0.0.8",
     name: "AllManga",
     icon: "icon.png",
     author: "Phantom",
-    description: "AllManga source for Phantom Sources.",
+    description: "Phantom-built AllManga source for Paperback.",
     contentRating: types_1.ContentRating.MATURE,
-    websiteBaseURL: BASE_URL,
+    websiteBaseURL: SITE,
     sourceTags: [],
-    intents: types_1.SourceIntents.MANGA_CHAPTERS | types_1.SourceIntents.HOMEPAGE_SECTIONS
+    intents: types_1.SourceIntents.MANGA_CHAPTERS |
+        types_1.SourceIntents.HOMEPAGE_SECTIONS |
+        types_1.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED
 };
 class AllManga extends types_1.Source {
     constructor() {
         super(...arguments);
         this.requestManager = App.createRequestManager({
             requestsPerSecond: 1,
-            requestTimeout: 20000
+            requestTimeout: 20000,
+            interceptor: {
+                interceptRequest: async (request) => {
+                    request.headers = {
+                        ...(request.headers ?? {}),
+                        referer: `${SITE}/`,
+                        origin: SITE,
+                        "content-type": "application/json",
+                        "user-agent": await this.requestManager.getDefaultUserAgent()
+                    };
+                    return request;
+                },
+                interceptResponse: async (response) => {
+                    return response;
+                }
+            }
         });
     }
     getMangaShareUrl(mangaId) {
-        return `${BASE_URL}/manga/${mangaId}`;
+        return `${SITE}/manga/${mangaId}`;
     }
-    fixImage(url) {
-        if (!url)
+    cover(path) {
+        if (!path)
             return "";
-        if (url.startsWith("http"))
-            return url;
-        return `${IMAGE_CDN}/${url.replace(/^\/+/, "")}`;
+        if (path.startsWith("http://") || path.startsWith("https://")) {
+            return encodeURI(path);
+        }
+        return encodeURI(`${COVER_CDN}/${path.replace(/^\/+/, "")}`);
     }
-    makeSearchPayload(search, page) {
-        return {
-            query: SEARCH_QUERY,
+    searchBody(keyword, page) {
+        return JSON.stringify({
+            query: ALLMANGA_SEARCH_QUERY,
             variables: {
                 search: {
-                    query: search.length > 0 ? search : undefined,
+                    query: keyword.trim().length > 0 ? keyword.trim() : undefined,
                     isManga: true,
                     allowAdult: true,
                     allowUnknown: false
@@ -534,27 +552,31 @@ class AllManga extends types_1.Source {
                 translationType: "sub",
                 countryOrigin: "ALL"
             }
-        };
+        });
     }
-    async getMangaList(search, page) {
+    async fetchTiles(keyword, page) {
         const request = App.createRequest({
-            url: API_URL,
+            url: API,
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Referer": `${BASE_URL}/`
-            },
-            data: JSON.stringify(this.makeSearchPayload(search, page))
+            data: this.searchBody(keyword, page)
         });
         const response = await this.requestManager.schedule(request, 1);
-        const json = JSON.parse(response.data);
-        const edges = json?.data?.mangas?.edges ?? [];
-        return edges.map((manga) => App.createPartialSourceManga({
-            mangaId: manga._id,
-            image: this.fixImage(manga.thumbnail),
-            title: manga.englishName || manga.name,
-            subtitle: manga.nativeName || "AllManga"
-        }));
+        const parsed = JSON.parse(response.data);
+        const edges = parsed?.data?.mangas?.edges ?? [];
+        const tiles = [];
+        for (const manga of edges) {
+            const id = manga._id;
+            const title = manga.englishName || manga.name || manga.nativeName || "";
+            if (!id || !title)
+                continue;
+            tiles.push(App.createPartialSourceManga({
+                mangaId: id,
+                image: this.cover(manga.thumbnail),
+                title,
+                subtitle: manga.nativeName || "AllManga"
+            }));
+        }
+        return tiles;
     }
     async getMangaDetails(mangaId) {
         return App.createSourceManga({
@@ -579,8 +601,8 @@ class AllManga extends types_1.Source {
     }
     async getSearchResults(query, metadata) {
         const page = metadata?.page ?? 1;
-        const searchQuery = query.title ?? "";
-        const results = await this.getMangaList(searchQuery, page);
+        const keyword = query.title ?? "";
+        const results = await this.fetchTiles(keyword, page);
         return App.createPagedResults({
             results,
             metadata: results.length === 20 ? { page: page + 1 } : undefined
@@ -588,14 +610,14 @@ class AllManga extends types_1.Source {
     }
     async getHomePageSections(sectionCallback) {
         const section = App.createHomeSection({
-            id: "popular",
-            title: "Popular",
+            id: "phantom-popular",
+            title: "Phantom Picks",
             items: [],
             containsMoreItems: false,
             type: "singleRowNormal"
         });
         sectionCallback(section);
-        section.items = await this.getMangaList("solo", 1);
+        section.items = await this.fetchTiles("solo", 1);
         sectionCallback(section);
     }
     async getTags() {
