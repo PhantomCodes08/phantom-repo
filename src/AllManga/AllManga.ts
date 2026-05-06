@@ -123,7 +123,6 @@ export class AllManga
     })
 
     const response = await this.requestManager.schedule(request, 1)
-
     this.checkResponseError(response)
 
     const raw = response.data as string
@@ -153,7 +152,7 @@ export class AllManga
       id: "phantom-popular",
       title: "Phantom Picks",
       items: [],
-      containsMoreItems: false,
+      containsMoreItems: true,
       type: "singleRowNormal"
     })
 
@@ -161,6 +160,19 @@ export class AllManga
 
     popular.items = await this.requestSearch("solo", 1)
     sectionCallback(popular)
+  }
+
+  async getViewMoreItems(
+    homepageSectionId: string,
+    metadata: any
+  ): Promise<PagedResults> {
+    const page = metadata?.page ?? 1
+    const results = await this.requestSearch("solo", page)
+
+    return App.createPagedResults({
+      results,
+      metadata: results.length === 20 ? { page: page + 1 } : undefined
+    })
   }
 
   async getMangaDetails(mangaId: string): Promise<SourceManga> {
