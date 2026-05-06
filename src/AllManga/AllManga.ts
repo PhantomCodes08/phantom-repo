@@ -17,7 +17,7 @@ const API = "https://api.allanime.day/api"
 const COVER_CDN = "https://wp.youtube-anime.com"
 
 export const AllMangaInfo: SourceInfo = {
-  version: "0.1.3",
+  version: "0.1.5",
   name: "AllManga",
   icon: "icon.png",
   author: "Phantom",
@@ -31,6 +31,7 @@ export const AllMangaInfo: SourceInfo = {
     SourceIntents.CLOUDFLARE_BYPASS_REQUIRED
 }
 
+// ⬇️ TYPE GOES HERE — OUTSIDE THE CLASS
 type AllMangaResult = {
   _id?: string
   name?: string
@@ -39,7 +40,10 @@ type AllMangaResult = {
   thumbnail?: string | null
 }
 
+// ⬇️ ONLY ONE CLASS — THIS ONE
 export class AllManga extends Source {
+
+
   requestManager = App.createRequestManager({
     requestsPerSecond: 1,
     requestTimeout: 20000
@@ -50,7 +54,7 @@ export class AllManga extends Source {
   }
 
   private cover(path?: string | null): string {
-    if (!path) return ""
+    if (!path) return "https://via.placeholder.com/256?text=No+Cover"
     if (path.startsWith("http")) return encodeURI(path)
     return encodeURI(`${COVER_CDN}/${path.replace(/^\/+/, "")}`)
   }
@@ -79,41 +83,69 @@ export class AllManga extends Source {
     return `${API}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify(extensions))}`
   }
 
+  // ------------------------------------------------------------
+  // DEBUG + SAFE API WRAPPER
+  // ------------------------------------------------------------
   private async fetchTiles(keyword: string, page: number): Promise<PartialSourceManga[]> {
-    const request = App.createRequest({
-      url: this.searchUrl(keyword, page),
-      method: "GET",
-      headers: {
-        "Referer": `${SITE}/`,
-        "Origin": SITE
+    try {
+      const request = App.createRequest({
+        url: this.searchUrl(keyword, page),
+        method: "GET",
+        headers: {
+          Referer: `${SITE}/`,
+          Origin: SITE
+        }
+      })
+
+      const response = await this.requestManager.schedule(request, 1)
+      const parsed = JSON.parse(response.data as string)
+
+      const edges: AllMangaResult[] = parsed?.data?.mangas?.edges ?? []
+
+      if (!Array.isArray(edges) || edges.length === 0) {
+        return [
+          App.createPartialSourceManga({
+            mangaId: "debug-no-results",
+            image: "https://via.placeholder.com/256?text=No+Results",
+            title: "API returned zero items",
+            subtitle: `keyword="${keyword}" page=${page}`
+          })
+        ]
       }
-    })
 
-    const response = await this.requestManager.schedule(request, 1)
-    const parsed = JSON.parse(response.data as string)
-
-    const edges: AllMangaResult[] = parsed?.data?.mangas?.edges ?? []
-
-    return edges
-      .filter((manga) => manga._id && (manga.englishName || manga.name || manga.nativeName))
-      .map((manga) =>
+      return edges
+        .filter((manga) => manga._id && (manga.englishName || manga.name || manga.nativeName))
+        .map((manga) =>
+          App.createPartialSourceManga({
+            mangaId: manga._id!,
+            image: this.cover(manga.thumbnail),
+            title: manga.englishName || manga.name || manga.nativeName || "Unknown Title",
+            subtitle: manga.nativeName || "AllManga"
+          })
+        )
+    } catch (e: any) {
+      return [
         App.createPartialSourceManga({
-          mangaId: manga._id!,
-          image: this.cover(manga.thumbnail),
-          title: manga.englishName || manga.name || manga.nativeName || "Unknown Title",
-          subtitle: manga.nativeName || "AllManga"
+          mangaId: "debug-error",
+          image: "https://via.placeholder.com/256?text=API+Error",
+          title: "API ERROR",
+          subtitle: String(e?.message ?? "Unknown error")
         })
-      )
+      ]
+    }
   }
 
+  // ------------------------------------------------------------
+  // REQUIRED METHODS
+  // ------------------------------------------------------------
   async getMangaDetails(mangaId: string) {
     return App.createSourceManga({
       id: mangaId,
       mangaInfo: App.createMangaInfo({
         titles: [mangaId],
-        image: "",
+        image: "https://via.placeholder.com/256?text=No+Image",
         desc: "Details parser not connected yet.",
-        status: "unknown"
+        status: "UNKNOWN"
       })
     })
   }
@@ -130,22 +162,32 @@ export class AllManga extends Source {
     })
   }
 
+  // ------------------------------------------------------------
+  // DEBUG SEARCH (always returns something)
+  // ------------------------------------------------------------
   async getSearchResults(query: SearchRequest, metadata: any): Promise<PagedResults> {
-    const page = metadata?.page ?? 1
-    const keyword = query.title ?? ""
-
-    const results = await this.fetchTiles(keyword, page)
+    const results: PartialSourceManga[] = [
+      App.createPartialSourceManga({
+        mangaId: "debug-search-1",
+        image: "https://via.placeholder.com/256?text=Search",
+        title: `Search: ${query.title ?? "no query"}`,
+        subtitle: "Static debug result"
+      })
+    ]
 
     return App.createPagedResults({
       results,
-      metadata: results.length === 20 ? { page: page + 1 } : undefined
+      metadata: undefined
     })
   }
 
+  // ------------------------------------------------------------
+  // DEBUG HOMEPAGE (always returns something)
+  // ------------------------------------------------------------
   async getHomePageSections(sectionCallback: (section: HomeSection) => void): Promise<void> {
     const section = App.createHomeSection({
-      id: "phantom-picks",
-      title: "Phantom Picks",
+      id: "phantom-debug",
+      title: "Phantom Debug Section",
       items: [],
       containsMoreItems: false,
       type: "singleRowNormal"
@@ -153,7 +195,21 @@ export class AllManga extends Source {
 
     sectionCallback(section)
 
-    section.items = await this.fetchTiles("solo", 1)
+    section.items = [
+      App.createPartialSourceManga({
+        mangaId: "debug-manga-1",
+        image: "https://via.placeholder.com/256?text=Debug+1",
+        title: "Debug Manga 1",
+        subtitle: "If you see this, UI works"
+      }),
+      App.createPartialSourceManga({
+        mangaId: "debug-manga-2",
+        image: "https://via.placeholder.com/256?text=Debug+2",
+        title: "Debug Manga 2",
+        subtitle: "API is the only thing left"
+      })
+    ]
+
     sectionCallback(section)
   }
 
@@ -161,5 +217,3 @@ export class AllManga extends Source {
     return []
   }
 }
-
-export default AllManga

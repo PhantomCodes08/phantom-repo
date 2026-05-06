@@ -466,7 +466,7 @@ const SITE = "https://allmanga.to";
 const API = "https://api.allanime.day/api";
 const COVER_CDN = "https://wp.youtube-anime.com";
 exports.AllMangaInfo = {
-    version: "0.1.3",
+    version: "0.1.5",
     name: "AllManga",
     icon: "icon.png",
     author: "Phantom",
@@ -478,6 +478,7 @@ exports.AllMangaInfo = {
         types_1.SourceIntents.HOMEPAGE_SECTIONS |
         types_1.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED
 };
+// ⬇️ ONLY ONE CLASS — THIS ONE
 class AllManga extends types_1.Source {
     constructor() {
         super(...arguments);
@@ -491,7 +492,7 @@ class AllManga extends types_1.Source {
     }
     cover(path) {
         if (!path)
-            return "";
+            return "https://via.placeholder.com/256?text=No+Cover";
         if (path.startsWith("http"))
             return encodeURI(path);
         return encodeURI(`${COVER_CDN}/${path.replace(/^\/+/, "")}`);
@@ -517,35 +518,63 @@ class AllManga extends types_1.Source {
         };
         return `${API}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify(extensions))}`;
     }
+    // ------------------------------------------------------------
+    // DEBUG + SAFE API WRAPPER
+    // ------------------------------------------------------------
     async fetchTiles(keyword, page) {
-        const request = App.createRequest({
-            url: this.searchUrl(keyword, page),
-            method: "GET",
-            headers: {
-                "Referer": `${SITE}/`,
-                "Origin": SITE
+        try {
+            const request = App.createRequest({
+                url: this.searchUrl(keyword, page),
+                method: "GET",
+                headers: {
+                    Referer: `${SITE}/`,
+                    Origin: SITE
+                }
+            });
+            const response = await this.requestManager.schedule(request, 1);
+            const parsed = JSON.parse(response.data);
+            const edges = parsed?.data?.mangas?.edges ?? [];
+            if (!Array.isArray(edges) || edges.length === 0) {
+                return [
+                    App.createPartialSourceManga({
+                        mangaId: "debug-no-results",
+                        image: "https://via.placeholder.com/256?text=No+Results",
+                        title: "API returned zero items",
+                        subtitle: `keyword="${keyword}" page=${page}`
+                    })
+                ];
             }
-        });
-        const response = await this.requestManager.schedule(request, 1);
-        const parsed = JSON.parse(response.data);
-        const edges = parsed?.data?.mangas?.edges ?? [];
-        return edges
-            .filter((manga) => manga._id && (manga.englishName || manga.name || manga.nativeName))
-            .map((manga) => App.createPartialSourceManga({
-            mangaId: manga._id,
-            image: this.cover(manga.thumbnail),
-            title: manga.englishName || manga.name || manga.nativeName || "Unknown Title",
-            subtitle: manga.nativeName || "AllManga"
-        }));
+            return edges
+                .filter((manga) => manga._id && (manga.englishName || manga.name || manga.nativeName))
+                .map((manga) => App.createPartialSourceManga({
+                mangaId: manga._id,
+                image: this.cover(manga.thumbnail),
+                title: manga.englishName || manga.name || manga.nativeName || "Unknown Title",
+                subtitle: manga.nativeName || "AllManga"
+            }));
+        }
+        catch (e) {
+            return [
+                App.createPartialSourceManga({
+                    mangaId: "debug-error",
+                    image: "https://via.placeholder.com/256?text=API+Error",
+                    title: "API ERROR",
+                    subtitle: String(e?.message ?? "Unknown error")
+                })
+            ];
+        }
     }
+    // ------------------------------------------------------------
+    // REQUIRED METHODS
+    // ------------------------------------------------------------
     async getMangaDetails(mangaId) {
         return App.createSourceManga({
             id: mangaId,
             mangaInfo: App.createMangaInfo({
                 titles: [mangaId],
-                image: "",
+                image: "https://via.placeholder.com/256?text=No+Image",
                 desc: "Details parser not connected yet.",
-                status: "unknown"
+                status: "UNKNOWN"
             })
         });
     }
@@ -559,25 +588,49 @@ class AllManga extends types_1.Source {
             pages: []
         });
     }
+    // ------------------------------------------------------------
+    // DEBUG SEARCH (always returns something)
+    // ------------------------------------------------------------
     async getSearchResults(query, metadata) {
-        const page = metadata?.page ?? 1;
-        const keyword = query.title ?? "";
-        const results = await this.fetchTiles(keyword, page);
+        const results = [
+            App.createPartialSourceManga({
+                mangaId: "debug-search-1",
+                image: "https://via.placeholder.com/256?text=Search",
+                title: `Search: ${query.title ?? "no query"}`,
+                subtitle: "Static debug result"
+            })
+        ];
         return App.createPagedResults({
             results,
-            metadata: results.length === 20 ? { page: page + 1 } : undefined
+            metadata: undefined
         });
     }
+    // ------------------------------------------------------------
+    // DEBUG HOMEPAGE (always returns something)
+    // ------------------------------------------------------------
     async getHomePageSections(sectionCallback) {
         const section = App.createHomeSection({
-            id: "phantom-picks",
-            title: "Phantom Picks",
+            id: "phantom-debug",
+            title: "Phantom Debug Section",
             items: [],
             containsMoreItems: false,
             type: "singleRowNormal"
         });
         sectionCallback(section);
-        section.items = await this.fetchTiles("solo", 1);
+        section.items = [
+            App.createPartialSourceManga({
+                mangaId: "debug-manga-1",
+                image: "https://via.placeholder.com/256?text=Debug+1",
+                title: "Debug Manga 1",
+                subtitle: "If you see this, UI works"
+            }),
+            App.createPartialSourceManga({
+                mangaId: "debug-manga-2",
+                image: "https://via.placeholder.com/256?text=Debug+2",
+                title: "Debug Manga 2",
+                subtitle: "API is the only thing left"
+            })
+        ];
         sectionCallback(section);
     }
     async getTags() {
@@ -585,7 +638,6 @@ class AllManga extends types_1.Source {
     }
 }
 exports.AllManga = AllManga;
-exports.default = AllManga;
 
 },{"@paperback/types":61}]},{},[62])(62)
 });
