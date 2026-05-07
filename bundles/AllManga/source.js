@@ -473,8 +473,12 @@ const API_MIRRORS = [
 // Correct hashes
 const HASH_SEARCH = "2d48e19fb67ddcac42fbb885204b6abb0a84f406f15ef83f36de4a66f49f651a";
 const HASH_RANDOM = "23ea909e23c92fc54cd37121d5ada5e3b32297837c094b4ea982407d0669081e";
+// Chapter list hash
+const HASH_CHAPTER_LIST = "ae7b2ed82ce3bf6fe9af426372174468958a066694167e6800bfcb3fcbdbb460";
+// Chapter pages hash
+const HASH_CHAPTER_PAGES = "466783e19a7540387e34265be906bebbe853857088d45d28af922ab8668ebb31";
 exports.AllMangaInfo = {
-    version: "0.3.0",
+    version: "0.3.1",
     name: "AllManga",
     icon: "icon.png",
     author: "Phantom",
@@ -501,7 +505,6 @@ class AllManga extends types_1.Source {
     cover(path) {
         if (!path || path.trim() === "")
             return "https://allmanga.to/assets/logo512.png";
-        // Remove query params (Paperback sometimes fails on them)
         const clean = path.split("?")[0];
         return clean.trim();
     }
@@ -566,7 +569,7 @@ class AllManga extends types_1.Source {
         }));
     }
     // ------------------------------------------------------------
-    // RANDOM PICKS (fixed — uses mangas)
+    // RANDOM PICKS
     // ------------------------------------------------------------
     async fetchRandom() {
         const variables = {
@@ -589,14 +592,11 @@ class AllManga extends types_1.Source {
         }));
     }
     // ------------------------------------------------------------
-    // HOMEPAGE (search(""))
+    // HOMEPAGE
     // ------------------------------------------------------------
     async fetchHomepageTiles() {
         return await this.fetchSearch("");
     }
-    // ------------------------------------------------------------
-    // SEARCH RESULTS
-    // ------------------------------------------------------------
     async getSearchResults(query) {
         const results = await this.fetchSearch(query.title ?? "");
         return App.createPagedResults({ results });
@@ -643,22 +643,69 @@ class AllManga extends types_1.Source {
         random.items = await this.fetchRandom();
         sectionCallback(random);
     }
+    // ------------------------------------------------------------
+    // MANGA DETAILS
+    // ------------------------------------------------------------
     async getMangaDetails(mangaId) {
         return App.createSourceManga({
             id: mangaId,
             mangaInfo: App.createMangaInfo({
                 titles: [mangaId],
-                image: "https://via.placeholder.com/256?text=No+Image",
-                desc: "Details parser not implemented yet.",
-                status: "UNKNOWN"
+                image: "https://allmanga.to/assets/logo512.png",
+                desc: "Details not implemented yet.",
+                status: "ONGOING"
             })
         });
     }
-    async getChapters() {
-        return [];
+    // ------------------------------------------------------------
+    // CHAPTER LIST
+    // ------------------------------------------------------------
+    async getChapters(mangaId) {
+        const variables = {
+            showId: `manga@${mangaId}`,
+            episodeNumStart: 0,
+            episodeNumEnd: 500
+        };
+        const jsonString = await this.tryMirrors((base) => `${base}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify({
+            persistedQuery: {
+                version: 1,
+                sha256Hash: HASH_CHAPTER_LIST
+            }
+        }))}`);
+        const parsed = JSON.parse(jsonString);
+        const eps = parsed?.data?.show?.episodes ?? [];
+        return eps.map((ep) => App.createChapter({
+            id: ep.episodeId,
+            mangaId,
+            chapNum: parseFloat(ep.episodeNum),
+            name: ep.title || `Chapter ${ep.episodeNum}`,
+            time: new Date()
+        }));
     }
-    async getChapterDetails() {
-        return App.createChapterDetails({ id: "", mangaId: "", pages: [] });
+    // ------------------------------------------------------------
+    // CHAPTER PAGES
+    // ------------------------------------------------------------
+    async getChapterDetails(mangaId, chapterId) {
+        const variables = {
+            mangaId,
+            translationType: "sub",
+            chapterString: chapterId,
+            limit: 500,
+            offset: 0
+        };
+        const jsonString = await this.tryMirrors((base) => `${base}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify({
+            persistedQuery: {
+                version: 1,
+                sha256Hash: HASH_CHAPTER_PAGES
+            }
+        }))}`);
+        const parsed = JSON.parse(jsonString);
+        const pages = parsed?.data?.manga?.chapter?.pages?.map((p) => p.img) ?? [];
+        return App.createChapterDetails({
+            id: chapterId,
+            mangaId,
+            pages
+        });
     }
     async getTags() {
         return [];
