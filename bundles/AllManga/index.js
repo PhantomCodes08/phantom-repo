@@ -474,7 +474,7 @@ const COVER_CDN = "https://wp.youtube-anime.com";
 // The ONE TRUE HASH used for ALL search + homepage queries
 const HASH = "2d48e19fb67ddcac42fbb885204b6abb0a84f406f15ef83f36de4a66f49f651a";
 exports.AllMangaInfo = {
-    version: "0.2.1",
+    version: "0.2.2",
     name: "AllManga",
     icon: "icon.png",
     author: "Phantom",
@@ -539,12 +539,13 @@ class AllManga extends types_1.Source {
     // ------------------------------------------------------------
     async fetchTiles(keyword, page) {
         try {
+            const isSearch = keyword.trim().length > 0;
             const variables = {
                 search: {
                     isManga: true,
-                    ...(keyword.trim() ? { query: keyword.trim() } : {})
+                    ...(isSearch ? { query: keyword.trim() } : {})
                 },
-                limit: keyword.trim() ? 26 : 26,
+                limit: 26,
                 page,
                 translationType: "sub",
                 countryOrigin: "ALL"
@@ -556,8 +557,12 @@ class AllManga extends types_1.Source {
                 }
             }))}`);
             const parsed = JSON.parse(jsonString);
-            // THE CORRECT FIELD NAME
-            const edges = parsed?.data?.shows?.edges ?? [];
+            // ⭐ Correct field switching:
+            // Homepage → shows
+            // Search → mangas
+            const edges = isSearch
+                ? parsed?.data?.mangas?.edges ?? []
+                : parsed?.data?.shows?.edges ?? [];
             if (!edges.length) {
                 return [
                     App.createPartialSourceManga({

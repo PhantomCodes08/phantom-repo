@@ -33,7 +33,7 @@ const COVER_CDN = "https://wp.youtube-anime.com"
 const HASH = "2d48e19fb67ddcac42fbb885204b6abb0a84f406f15ef83f36de4a66f49f651a"
 
 export const AllMangaInfo: SourceInfo = {
-  version: "0.2.1",
+  version: "0.2.2",
   name: "AllManga",
   icon: "icon.png",
   author: "Phantom",
@@ -105,12 +105,14 @@ export class AllManga extends Source {
   // ------------------------------------------------------------
   private async fetchTiles(keyword: string, page: number): Promise<PartialSourceManga[]> {
     try {
+      const isSearch = keyword.trim().length > 0
+
       const variables = {
         search: {
           isManga: true,
-          ...(keyword.trim() ? { query: keyword.trim() } : {})
+          ...(isSearch ? { query: keyword.trim() } : {})
         },
-        limit: keyword.trim() ? 26 : 26,
+        limit: 26,
         page,
         translationType: "sub",
         countryOrigin: "ALL"
@@ -127,8 +129,12 @@ export class AllManga extends Source {
 
       const parsed = JSON.parse(jsonString) as AllMangaSearchResponse
 
-      // THE CORRECT FIELD NAME
-      const edges: AllMangaSearchResult[] = parsed?.data?.shows?.edges ?? []
+      // ⭐ Correct field switching:
+      // Homepage → shows
+      // Search → mangas
+      const edges: AllMangaSearchResult[] = isSearch
+        ? parsed?.data?.mangas?.edges ?? []
+        : parsed?.data?.shows?.edges ?? []
 
       if (!edges.length) {
         return [
