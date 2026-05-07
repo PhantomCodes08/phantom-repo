@@ -475,7 +475,7 @@ const COVER_CDN = "https://wp.youtube-anime.com";
 const HASH_SEARCH = "2d48e19fb67ddcac42fbb885204b6abb0a84f406f15ef83f36de4a66f49f651a";
 const HASH_RANDOM = "23ea909e23c92fc54cd37121d5ada5e3b32297837c094b4ea982407d0669081e";
 exports.AllMangaInfo = {
-    version: "0.2.6",
+    version: "0.2.7",
     name: "AllManga",
     icon: "icon.png",
     author: "Phantom",
@@ -556,7 +556,7 @@ class AllManga extends types_1.Source {
         }));
     }
     // ------------------------------------------------------------
-    // RANDOM PICKS (correct)
+    // RANDOM PICKS (FIXED — uses mangas)
     // ------------------------------------------------------------
     async fetchRandom() {
         const variables = {
@@ -570,7 +570,7 @@ class AllManga extends types_1.Source {
             persistedQuery: { version: 1, sha256Hash: HASH_RANDOM }
         }))}`);
         const parsed = JSON.parse(jsonString);
-        const edges = parsed?.data?.mangas?.edges ?? [];
+        const edges = parsed?.data?.mangas?.edges ?? []; // ⭐ FIXED
         return edges.map((m) => App.createPartialSourceManga({
             mangaId: m._id,
             image: this.cover(m.thumbnail),
@@ -579,7 +579,7 @@ class AllManga extends types_1.Source {
         }));
     }
     // ------------------------------------------------------------
-    // HOMEPAGE (RESTORED: search("", 1))
+    // HOMEPAGE (RESTORED — search(""))
     // ------------------------------------------------------------
     async fetchHomepageTiles() {
         return await this.fetchSearch("");
@@ -592,10 +592,10 @@ class AllManga extends types_1.Source {
         return App.createPagedResults({ results });
     }
     // ------------------------------------------------------------
-    // HOMEPAGE SECTIONS (RESTORED)
+    // HOMEPAGE SECTIONS (FINAL)
     // ------------------------------------------------------------
     async getHomePageSections(sectionCallback) {
-        // ⭐ Row 1 — Recently Updated (search(""))
+        // ⭐ Row 1 — Recently Updated
         const recent = App.createHomeSection({
             id: "recent",
             title: "Recently Updated",

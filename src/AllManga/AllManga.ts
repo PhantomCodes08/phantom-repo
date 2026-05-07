@@ -34,7 +34,7 @@ const HASH_SEARCH = "2d48e19fb67ddcac42fbb885204b6abb0a84f406f15ef83f36de4a66f49
 const HASH_RANDOM = "23ea909e23c92fc54cd37121d5ada5e3b32297837c094b4ea982407d0669081e"
 
 export const AllMangaInfo: SourceInfo = {
-  version: "0.2.6",
+  version: "0.2.7",
   name: "AllManga",
   icon: "icon.png",
   author: "Phantom",
@@ -128,7 +128,7 @@ export class AllManga extends Source {
   }
 
   // ------------------------------------------------------------
-  // RANDOM PICKS (correct)
+  // RANDOM PICKS (FIXED — uses mangas)
   // ------------------------------------------------------------
   private async fetchRandom(): Promise<PartialSourceManga[]> {
     const variables = {
@@ -146,7 +146,7 @@ export class AllManga extends Source {
     )
 
     const parsed = JSON.parse(jsonString) as AllMangaSearchResponse
-    const edges = parsed?.data?.mangas?.edges ?? []
+    const edges = parsed?.data?.mangas?.edges ?? []   // ⭐ FIXED
 
     return edges.map((m: AllMangaSearchResult) =>
       App.createPartialSourceManga({
@@ -159,7 +159,7 @@ export class AllManga extends Source {
   }
 
   // ------------------------------------------------------------
-  // HOMEPAGE (RESTORED: search("", 1))
+  // HOMEPAGE (RESTORED — search(""))
   // ------------------------------------------------------------
   private async fetchHomepageTiles(): Promise<PartialSourceManga[]> {
     return await this.fetchSearch("")
@@ -174,11 +174,11 @@ export class AllManga extends Source {
   }
 
   // ------------------------------------------------------------
-  // HOMEPAGE SECTIONS (RESTORED)
+  // HOMEPAGE SECTIONS (FINAL)
   // ------------------------------------------------------------
   async getHomePageSections(sectionCallback: (section: HomeSection) => void): Promise<void> {
 
-    // ⭐ Row 1 — Recently Updated (search(""))
+    // ⭐ Row 1 — Recently Updated
     const recent = App.createHomeSection({
       id: "recent",
       title: "Recently Updated",
