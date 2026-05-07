@@ -466,7 +466,7 @@ const SITE = "https://allmanga.to";
 const API = "https://api.allanime.to/api";
 const COVER_CDN = "https://wp.youtube-anime.com";
 exports.AllMangaInfo = {
-    version: "0.1.6",
+    version: "0.1.7",
     name: "AllManga",
     icon: "icon.png",
     author: "Phantom",
@@ -478,7 +478,6 @@ exports.AllMangaInfo = {
         types_1.SourceIntents.HOMEPAGE_SECTIONS |
         types_1.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED
 };
-// ⬇️ ONLY ONE CLASS — THIS ONE
 class AllManga extends types_1.Source {
     constructor() {
         super(...arguments);
@@ -513,13 +512,13 @@ class AllManga extends types_1.Source {
         const extensions = {
             persistedQuery: {
                 version: 1,
-                sha256Hash: "f8e3b7e6f4e2c0a1b1d8e3c4f7a9d2c1e0b3f6a7c9d8e1f2b3c4d5e6f7a8b9c0"
+                sha256Hash: "d4f3b8c1e2a9f7d6c5b4a392817f6e5d4c3b2a1908f7e6d5c4b3a291817f6e5d"
             }
         };
         return `${API}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify(extensions))}`;
     }
     // ------------------------------------------------------------
-    // DEBUG + SAFE API WRAPPER
+    // API WRAPPER
     // ------------------------------------------------------------
     async fetchTiles(keyword, page) {
         try {
@@ -549,12 +548,12 @@ class AllManga extends types_1.Source {
                 ];
             }
             return edges
-                .filter((manga) => manga._id && (manga.englishName || manga.name || manga.nativeName))
-                .map((manga) => App.createPartialSourceManga({
-                mangaId: manga._id,
-                image: this.cover(manga.thumbnail),
-                title: manga.englishName || manga.name || manga.nativeName || "Unknown Title",
-                subtitle: manga.nativeName || "AllManga"
+                .filter(m => m._id)
+                .map(m => App.createPartialSourceManga({
+                mangaId: m._id,
+                image: this.cover(m.thumbnail),
+                title: m.englishName || m.name || m.nativeName || "Unknown Title",
+                subtitle: m.nativeName || "AllManga"
             }));
         }
         catch (e) {

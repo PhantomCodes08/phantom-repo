@@ -1,6 +1,7 @@
+// Types for AllManga search responses
+
 export type AllMangaSearchResult = {
-  _id?: string
-  id?: string
+  _id: string
   name?: string
   englishName?: string | null
   nativeName?: string | null
