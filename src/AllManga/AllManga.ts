@@ -135,7 +135,9 @@ export class AllManga extends Source {
     const variables = {
       search: { sortBy: "Random" },
       limit: 26,
-      page: 1
+      page: 1,
+      translationType: "sub",
+      countryOrigin: "ALL"
     }
 
     const jsonString = await this.tryMirrors((base) =>
@@ -158,7 +160,7 @@ export class AllManga extends Source {
   }
 
   // ------------------------------------------------------------
-  // HOMEPAGE (the version that worked)
+  // HOMEPAGE (correct + complete variables)
   // ------------------------------------------------------------
   private async fetchHome(): Promise<PartialSourceManga[]> {
     const variables = {
@@ -168,7 +170,10 @@ export class AllManga extends Source {
         allowUnknown: false,
         allowAdult: false
       },
-      page: 1
+      limit: 26,
+      page: 1,
+      translationType: "sub",
+      countryOrigin: "ALL"
     }
 
     const jsonString = await this.tryMirrors((base) =>

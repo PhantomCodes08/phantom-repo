@@ -563,7 +563,9 @@ class AllManga extends types_1.Source {
         const variables = {
             search: { sortBy: "Random" },
             limit: 26,
-            page: 1
+            page: 1,
+            translationType: "sub",
+            countryOrigin: "ALL"
         };
         const jsonString = await this.tryMirrors((base) => `${base}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify({
             persistedQuery: { version: 1, sha256Hash: HASH_RANDOM }
@@ -578,7 +580,7 @@ class AllManga extends types_1.Source {
         }));
     }
     // ------------------------------------------------------------
-    // HOMEPAGE (the version that worked)
+    // HOMEPAGE (correct + complete variables)
     // ------------------------------------------------------------
     async fetchHome() {
         const variables = {
@@ -588,7 +590,10 @@ class AllManga extends types_1.Source {
                 allowUnknown: false,
                 allowAdult: false
             },
-            page: 1
+            limit: 26,
+            page: 1,
+            translationType: "sub",
+            countryOrigin: "ALL"
         };
         const jsonString = await this.tryMirrors((base) => `${base}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify({
             persistedQuery: { version: 1, sha256Hash: HASH_HOME }
