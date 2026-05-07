@@ -27,14 +27,12 @@ const API_MIRRORS = [
   "https://api.allanime.xyz/api"
 ]
 
-const COVER_CDN = "https://wp.youtube-anime.com"
-
 // Correct hashes
 const HASH_SEARCH = "2d48e19fb67ddcac42fbb885204b6abb0a84f406f15ef83f36de4a66f49f651a"
 const HASH_RANDOM = "23ea909e23c92fc54cd37121d5ada5e3b32297837c094b4ea982407d0669081e"
 
 export const AllMangaInfo: SourceInfo = {
-  version: "0.2.9",
+  version: "0.3.0",
   name: "AllManga",
   icon: "icon.png",
   author: "Phantom",
@@ -59,16 +57,30 @@ export class AllManga extends Source {
     return `${SITE}/manga/${mangaId}`
   }
 
-private cover(path?: string | null): string {
-  if (!path || path.trim() === "")
-    return "https://allmanga.to/assets/logo512.png"
+  // ⭐ Bulletproof thumbnail handler
+  private cover(path?: string | null): string {
+    if (!path || path.trim() === "")
+      return "https://allmanga.to/assets/logo512.png"
 
-  // Remove query parameters (Paperback sometimes fails on them)
-  const clean = path.split("?")[0]
+    // Remove query params (Paperback sometimes fails on them)
+    const clean = path.split("?")[0]
 
-  return clean.trim()
-}
+    return clean.trim()
+  }
 
+  // ⭐ English‑preferred title logic
+  private titleFor(m: AllMangaSearchResult): string {
+    if (m.englishName && m.englishName.trim() !== "")
+      return m.englishName.trim()
+
+    if (m.name && m.name.trim() !== "")
+      return m.name.trim()
+
+    if (m.nativeName && m.nativeName.trim() !== "")
+      return m.nativeName.trim()
+
+    return "Untitled"
+  }
 
   // ------------------------------------------------------------
   // MIRROR FAILOVER
@@ -102,7 +114,7 @@ private cover(path?: string | null): string {
   }
 
   // ------------------------------------------------------------
-  // SEARCH 
+  // SEARCH
   // ------------------------------------------------------------
   private async fetchSearch(keyword: string): Promise<PartialSourceManga[]> {
     const variables = {
@@ -126,14 +138,14 @@ private cover(path?: string | null): string {
       App.createPartialSourceManga({
         mangaId: m._id!,
         image: this.cover(m.thumbnail),
-        title: m.englishName || m.name || m.nativeName || "Unknown Title",
+        title: this.titleFor(m),
         subtitle: m.nativeName || "AllManga"
       })
     )
   }
 
   // ------------------------------------------------------------
-  // RANDOM PICKS (FIXED — uses mangas)
+  // RANDOM PICKS (fixed — uses mangas)
   // ------------------------------------------------------------
   private async fetchRandom(): Promise<PartialSourceManga[]> {
     const variables = {
@@ -151,20 +163,20 @@ private cover(path?: string | null): string {
     )
 
     const parsed = JSON.parse(jsonString) as AllMangaSearchResponse
-    const edges = parsed?.data?.mangas?.edges ?? []   // ⭐ FIXED
+    const edges = parsed?.data?.mangas?.edges ?? []
 
     return edges.map((m: AllMangaSearchResult) =>
       App.createPartialSourceManga({
         mangaId: m._id!,
         image: this.cover(m.thumbnail),
-        title: m.englishName || m.name || m.nativeName || "Unknown Title",
+        title: this.titleFor(m),
         subtitle: m.nativeName || "AllManga"
       })
     )
   }
 
   // ------------------------------------------------------------
-  // HOMEPAGE (RESTORED — search(""))
+  // HOMEPAGE (search(""))
   // ------------------------------------------------------------
   private async fetchHomepageTiles(): Promise<PartialSourceManga[]> {
     return await this.fetchSearch("")
@@ -179,57 +191,55 @@ private cover(path?: string | null): string {
   }
 
   // ------------------------------------------------------------
-  // HOMEPAGE SECTIONS (FINAL)
+  // HOMEPAGE SECTIONS (two rows + random)
   // ------------------------------------------------------------
   async getHomePageSections(sectionCallback: (section: HomeSection) => void): Promise<void> {
 
-  // Fetch homepage tiles once
-  const results = await this.fetchHomepageTiles()
-  const half = Math.ceil(results.length / 2)
+    const results = await this.fetchHomepageTiles()
+    const half = Math.ceil(results.length / 2)
 
-  const row1Items = results.slice(0, half)
-  const row2Items = results.slice(half)
+    const row1Items = results.slice(0, half)
+    const row2Items = results.slice(half)
 
-  // Recently Updated — Row 1
-  const recent1 = App.createHomeSection({
-    id: "recent_1",
-    title: "Recently Updated (1)",
-    type: "singleRowNormal",
-    items: [],
-    containsMoreItems: false
-  })
-  sectionCallback(recent1)
+    // Row 1
+    const recent1 = App.createHomeSection({
+      id: "recent_1",
+      title: "Recently Updated (1)",
+      type: "singleRowNormal",
+      items: [],
+      containsMoreItems: false
+    })
+    sectionCallback(recent1)
 
-  recent1.items = row1Items
-  sectionCallback(recent1)
+    recent1.items = row1Items
+    sectionCallback(recent1)
 
-  // Recently Updated — Row 2
-  const recent2 = App.createHomeSection({
-    id: "recent_2",
-    title: "Recently Updated (2)",
-    type: "singleRowNormal",
-    items: [],
-    containsMoreItems: false
-  })
-  sectionCallback(recent2)
+    // Row 2
+    const recent2 = App.createHomeSection({
+      id: "recent_2",
+      title: "Recently Updated (2)",
+      type: "singleRowNormal",
+      items: [],
+      containsMoreItems: false
+    })
+    sectionCallback(recent2)
 
-  recent2.items = row2Items
-  sectionCallback(recent2)
+    recent2.items = row2Items
+    sectionCallback(recent2)
 
-  // Random Picks
-  const random = App.createHomeSection({
-    id: "random",
-    title: "Random Picks",
-    type: "singleRowNormal",
-    items: [],
-    containsMoreItems: false
-  })
-  sectionCallback(random)
+    // Random Picks
+    const random = App.createHomeSection({
+      id: "random",
+      title: "Random Picks",
+      type: "singleRowNormal",
+      items: [],
+      containsMoreItems: false
+    })
+    sectionCallback(random)
 
-  random.items = await this.fetchRandom()
-  sectionCallback(random)
-}
-
+    random.items = await this.fetchRandom()
+    sectionCallback(random)
+  }
 
   async getMangaDetails(mangaId: string) {
     return App.createSourceManga({

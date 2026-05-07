@@ -470,12 +470,11 @@ const API_MIRRORS = [
     "https://api.allanime.cc/api",
     "https://api.allanime.xyz/api"
 ];
-const COVER_CDN = "https://wp.youtube-anime.com";
 // Correct hashes
 const HASH_SEARCH = "2d48e19fb67ddcac42fbb885204b6abb0a84f406f15ef83f36de4a66f49f651a";
 const HASH_RANDOM = "23ea909e23c92fc54cd37121d5ada5e3b32297837c094b4ea982407d0669081e";
 exports.AllMangaInfo = {
-    version: "0.2.9",
+    version: "0.3.0",
     name: "AllManga",
     icon: "icon.png",
     author: "Phantom",
@@ -498,12 +497,23 @@ class AllManga extends types_1.Source {
     getMangaShareUrl(mangaId) {
         return `${SITE}/manga/${mangaId}`;
     }
+    // ⭐ Bulletproof thumbnail handler
     cover(path) {
         if (!path || path.trim() === "")
             return "https://allmanga.to/assets/logo512.png";
-        // Remove query parameters (Paperback sometimes fails on them)
+        // Remove query params (Paperback sometimes fails on them)
         const clean = path.split("?")[0];
         return clean.trim();
+    }
+    // ⭐ English‑preferred title logic
+    titleFor(m) {
+        if (m.englishName && m.englishName.trim() !== "")
+            return m.englishName.trim();
+        if (m.name && m.name.trim() !== "")
+            return m.name.trim();
+        if (m.nativeName && m.nativeName.trim() !== "")
+            return m.nativeName.trim();
+        return "Untitled";
     }
     // ------------------------------------------------------------
     // MIRROR FAILOVER
@@ -533,7 +543,7 @@ class AllManga extends types_1.Source {
         throw new Error("All mirrors failed");
     }
     // ------------------------------------------------------------
-    // SEARCH 
+    // SEARCH
     // ------------------------------------------------------------
     async fetchSearch(keyword) {
         const variables = {
@@ -551,12 +561,12 @@ class AllManga extends types_1.Source {
         return edges.map((m) => App.createPartialSourceManga({
             mangaId: m._id,
             image: this.cover(m.thumbnail),
-            title: m.englishName || m.name || m.nativeName || "Unknown Title",
+            title: this.titleFor(m),
             subtitle: m.nativeName || "AllManga"
         }));
     }
     // ------------------------------------------------------------
-    // RANDOM PICKS (FIXED — uses mangas)
+    // RANDOM PICKS (fixed — uses mangas)
     // ------------------------------------------------------------
     async fetchRandom() {
         const variables = {
@@ -570,16 +580,16 @@ class AllManga extends types_1.Source {
             persistedQuery: { version: 1, sha256Hash: HASH_RANDOM }
         }))}`);
         const parsed = JSON.parse(jsonString);
-        const edges = parsed?.data?.mangas?.edges ?? []; // ⭐ FIXED
+        const edges = parsed?.data?.mangas?.edges ?? [];
         return edges.map((m) => App.createPartialSourceManga({
             mangaId: m._id,
             image: this.cover(m.thumbnail),
-            title: m.englishName || m.name || m.nativeName || "Unknown Title",
+            title: this.titleFor(m),
             subtitle: m.nativeName || "AllManga"
         }));
     }
     // ------------------------------------------------------------
-    // HOMEPAGE (RESTORED — search(""))
+    // HOMEPAGE (search(""))
     // ------------------------------------------------------------
     async fetchHomepageTiles() {
         return await this.fetchSearch("");
@@ -592,15 +602,14 @@ class AllManga extends types_1.Source {
         return App.createPagedResults({ results });
     }
     // ------------------------------------------------------------
-    // HOMEPAGE SECTIONS (FINAL)
+    // HOMEPAGE SECTIONS (two rows + random)
     // ------------------------------------------------------------
     async getHomePageSections(sectionCallback) {
-        // Fetch homepage tiles once
         const results = await this.fetchHomepageTiles();
         const half = Math.ceil(results.length / 2);
         const row1Items = results.slice(0, half);
         const row2Items = results.slice(half);
-        // Recently Updated — Row 1
+        // Row 1
         const recent1 = App.createHomeSection({
             id: "recent_1",
             title: "Recently Updated (1)",
@@ -611,7 +620,7 @@ class AllManga extends types_1.Source {
         sectionCallback(recent1);
         recent1.items = row1Items;
         sectionCallback(recent1);
-        // Recently Updated — Row 2
+        // Row 2
         const recent2 = App.createHomeSection({
             id: "recent_2",
             title: "Recently Updated (2)",
