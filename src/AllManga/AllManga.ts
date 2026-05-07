@@ -29,12 +29,12 @@ const API_MIRRORS = [
 
 const COVER_CDN = "https://wp.youtube-anime.com"
 
-// ⭐ Correct hashes
+// Correct hashes
 const HASH_SEARCH = "2d48e19fb67ddcac42fbb885204b6abb0a84f406f15ef83f36de4a66f49f651a"
 const HASH_RANDOM = "23ea909e23c92fc54cd37121d5ada5e3b32297837c094b4ea982407d0669081e"
 
 export const AllMangaInfo: SourceInfo = {
-  version: "0.2.8",
+  version: "0.2.9",
   name: "AllManga",
   icon: "icon.png",
   author: "Phantom",
@@ -60,9 +60,15 @@ export class AllManga extends Source {
   }
 
 private cover(path?: string | null): string {
-  if (!path) return "https://via.placeholder.com/256?text=No+Cover"
-  return path.trim()
+  if (!path || path.trim() === "")
+    return "https://allmanga.to/assets/logo512.png"
+
+  // Remove query parameters (Paperback sometimes fails on them)
+  const clean = path.split("?")[0]
+
+  return clean.trim()
 }
+
 
   // ------------------------------------------------------------
   // MIRROR FAILOVER
@@ -96,7 +102,7 @@ private cover(path?: string | null): string {
   }
 
   // ------------------------------------------------------------
-  // SEARCH (correct)
+  // SEARCH 
   // ------------------------------------------------------------
   private async fetchSearch(keyword: string): Promise<PartialSourceManga[]> {
     const variables = {
@@ -184,7 +190,7 @@ private cover(path?: string | null): string {
   const row1Items = results.slice(0, half)
   const row2Items = results.slice(half)
 
-  // ⭐ Recently Updated — Row 1
+  // Recently Updated — Row 1
   const recent1 = App.createHomeSection({
     id: "recent_1",
     title: "Recently Updated (1)",
@@ -197,7 +203,7 @@ private cover(path?: string | null): string {
   recent1.items = row1Items
   sectionCallback(recent1)
 
-  // ⭐ Recently Updated — Row 2
+  // Recently Updated — Row 2
   const recent2 = App.createHomeSection({
     id: "recent_2",
     title: "Recently Updated (2)",
@@ -210,7 +216,7 @@ private cover(path?: string | null): string {
   recent2.items = row2Items
   sectionCallback(recent2)
 
-  // ⭐ Random Picks
+  // Random Picks
   const random = App.createHomeSection({
     id: "random",
     title: "Random Picks",
