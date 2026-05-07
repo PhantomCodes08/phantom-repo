@@ -29,15 +29,17 @@ const API_MIRRORS = [
 
 const COVER_CDN = "https://wp.youtube-anime.com"
 
-// The ONE TRUE HASH used for ALL search + homepage queries
-const HASH = "2d48e19fb67ddcac42fbb885204b6abb0a84f406f15ef83f36de4a66f49f651a"
+// ⭐ Correct hashes
+const HASH_SEARCH = "2d48e19fb67ddcac42fbb885204b6abb0a84f406f15ef83f36de4a66f49f651a"
+const HASH_RANDOM = "23ea909e23c92fc54cd37121d5ada5e3b32297837c094b4ea982407d0669081e"
+const HASH_HOME = "fbd24de3aec73d35332185b621beec15396aaf8e8ae00183ddac6c19fbf8adcf"
 
 export const AllMangaInfo: SourceInfo = {
-  version: "0.2.3",
+  version: "0.2.4",
   name: "AllManga",
   icon: "icon.png",
   author: "Phantom",
-  description: "Fully updated AllManga source using AllAnime backend.",
+  description: "AllManga source using AllAnime backend.",
   contentRating: ContentRating.MATURE,
   websiteBaseURL: SITE,
   sourceTags: [],
@@ -65,7 +67,7 @@ export class AllManga extends Source {
   }
 
   // ------------------------------------------------------------
-  // MIRROR FAILOVER SYSTEM
+  // MIRROR FAILOVER
   // ------------------------------------------------------------
   private async tryMirrors(urlBuilder: (base: string) => string): Promise<string> {
     for (const base of API_MIRRORS) {
@@ -78,21 +80,16 @@ export class AllManga extends Source {
           headers: {
             Referer: `${SITE}/`,
             Origin: SITE,
-            "User-Agent": "Mozilla/5.0 (Android 13; Mobile; rv:109.0) Gecko/109.0 Firefox/109.0",
-            "Accept": "application/json",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Cache-Control": "no-cache"
+            "User-Agent": "Mozilla/5.0",
+            "Accept": "application/json"
           }
         })
 
         const response = await this.requestManager.schedule(request, 1)
-
-        // Validate JSON
         JSON.parse(response.data as string)
-
         return response.data as string
 
-      } catch (err) {
+      } catch (_) {
         continue
       }
     }
@@ -101,76 +98,138 @@ export class AllManga extends Source {
   }
 
   // ------------------------------------------------------------
-  // SEARCH + HOMEPAGE FETCHER (Unified Schema)
+  // SEARCH (correct)
   // ------------------------------------------------------------
-  private async fetchTiles(keyword: string, page: number): Promise<PartialSourceManga[]> {
-    try {
-      const isSearch = keyword.trim().length > 0
-
-      const variables = {
-        search: {
-          isManga: true,
-          ...(isSearch ? { query: keyword.trim() } : {})
-        },
-        limit: 26,
-        page,
-        translationType: "sub",
-        countryOrigin: "ALL"
-      }
-
-      const jsonString = await this.tryMirrors((base) =>
-        `${base}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify({
-          persistedQuery: {
-            version: 1,
-            sha256Hash: HASH
-          }
-        }))}`
-      )
-
-      const parsed = JSON.parse(jsonString) as AllMangaSearchResponse
-
-      // ⭐ Correct field switching:
-      // Homepage → shows
-      // Search → mangas
-      const edges: AllMangaSearchResult[] = isSearch
-        ? parsed?.data?.mangas?.edges ?? []
-        : parsed?.data?.shows?.edges ?? []
-
-      if (!edges.length) {
-        return [
-          App.createPartialSourceManga({
-            mangaId: "debug-no-results",
-            image: "https://via.placeholder.com/256?text=No+Results",
-            title: "No results",
-            subtitle: `keyword="${keyword}" page=${page}`
-          })
-        ]
-      }
-
-      return edges.map((m) =>
-        App.createPartialSourceManga({
-          mangaId: m._id!,
-          image: this.cover(m.thumbnail),
-          title: m.englishName || m.name || m.nativeName || "Unknown Title",
-          subtitle: m.nativeName || "AllManga"
-        })
-      )
-
-    } catch (e: any) {
-      return [
-        App.createPartialSourceManga({
-          mangaId: "debug-error",
-          image: "https://via.placeholder.com/256?text=API+Error",
-          title: "API ERROR",
-          subtitle: String(e?.message ?? "Unknown error")
-        })
-      ]
+  private async fetchSearch(keyword: string): Promise<PartialSourceManga[]> {
+    const variables = {
+      search: { query: keyword, isManga: true },
+      limit: 26,
+      page: 1,
+      translationType: "sub",
+      countryOrigin: "ALL"
     }
+
+    const jsonString = await this.tryMirrors((base) =>
+      `${base}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify({
+        persistedQuery: { version: 1, sha256Hash: HASH_SEARCH }
+      }))}`
+    )
+
+    const parsed = JSON.parse(jsonString) as AllMangaSearchResponse
+    const edges = parsed?.data?.mangas?.edges ?? []
+
+    return edges.map((m: AllMangaSearchResult) =>
+      App.createPartialSourceManga({
+        mangaId: m._id!,
+        image: this.cover(m.thumbnail),
+        title: m.englishName || m.name || m.nativeName || "Unknown Title",
+        subtitle: m.nativeName || "AllManga"
+      })
+    )
   }
 
   // ------------------------------------------------------------
-  // REQUIRED PAPERBACK METHODS
+  // RANDOM PICKS (correct)
   // ------------------------------------------------------------
+  private async fetchRandom(): Promise<PartialSourceManga[]> {
+    const variables = {
+      search: { sortBy: "Random" },
+      limit: 26,
+      page: 1
+    }
+
+    const jsonString = await this.tryMirrors((base) =>
+      `${base}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify({
+        persistedQuery: { version: 1, sha256Hash: HASH_RANDOM }
+      }))}`
+    )
+
+    const parsed = JSON.parse(jsonString) as AllMangaSearchResponse
+    const edges = parsed?.data?.shows?.edges ?? []
+
+    return edges.map((m: AllMangaSearchResult) =>
+      App.createPartialSourceManga({
+        mangaId: m._id!,
+        image: this.cover(m.thumbnail),
+        title: m.englishName || m.name || m.nativeName || "Unknown Title",
+        subtitle: m.nativeName || "AllManga"
+      })
+    )
+  }
+
+  // ------------------------------------------------------------
+  // HOMEPAGE (the version that worked)
+  // ------------------------------------------------------------
+  private async fetchHome(): Promise<PartialSourceManga[]> {
+    const variables = {
+      search: {
+        format: "manga",
+        queryType: "Home",
+        allowUnknown: false,
+        allowAdult: false
+      },
+      page: 1
+    }
+
+    const jsonString = await this.tryMirrors((base) =>
+      `${base}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify({
+        persistedQuery: { version: 1, sha256Hash: HASH_HOME }
+      }))}`
+    )
+
+    const parsed = JSON.parse(jsonString) as AllMangaSearchResponse
+    const edges = parsed?.data?.shows?.edges ?? []
+
+    return edges.map((m: AllMangaSearchResult) =>
+      App.createPartialSourceManga({
+        mangaId: m._id!,
+        image: this.cover(m.thumbnail),
+        title: m.englishName || m.name || m.nativeName || "Unknown Title",
+        subtitle: m.nativeName || "AllManga"
+      })
+    )
+  }
+
+  // ------------------------------------------------------------
+  // SEARCH RESULTS
+  // ------------------------------------------------------------
+  async getSearchResults(query: SearchRequest): Promise<PagedResults> {
+    const results = await this.fetchSearch(query.title ?? "")
+    return App.createPagedResults({ results })
+  }
+
+  // ------------------------------------------------------------
+  // HOMEPAGE SECTIONS
+  // ------------------------------------------------------------
+  async getHomePageSections(sectionCallback: (section: HomeSection) => void): Promise<void> {
+
+    // ⭐ Row 1 — Recently Updated
+    const recent = App.createHomeSection({
+      id: "recent",
+      title: "Recently Updated",
+      type: "singleRowNormal",
+      items: [],
+      containsMoreItems: false
+    })
+    sectionCallback(recent)
+
+    recent.items = await this.fetchHome()
+    sectionCallback(recent)
+
+    // ⭐ Row 2 — Random Picks
+    const random = App.createHomeSection({
+      id: "random",
+      title: "Random Picks",
+      type: "singleRowNormal",
+      items: [],
+      containsMoreItems: false
+    })
+    sectionCallback(random)
+
+    random.items = await this.fetchRandom()
+    sectionCallback(random)
+  }
+
   async getMangaDetails(mangaId: string) {
     return App.createSourceManga({
       id: mangaId,
@@ -183,60 +242,12 @@ export class AllManga extends Source {
     })
   }
 
-  async getChapters(mangaId: string): Promise<Chapter[]> {
+  async getChapters(): Promise<Chapter[]> {
     return []
   }
 
-  async getChapterDetails(mangaId: string, chapterId: string): Promise<ChapterDetails> {
-    return App.createChapterDetails({
-      id: chapterId,
-      mangaId,
-      pages: []
-    })
-  }
-
-  // ------------------------------------------------------------
-  // SEARCH RESULTS
-  // ------------------------------------------------------------
-  async getSearchResults(query: SearchRequest, metadata: any): Promise<PagedResults> {
-    const results = await this.fetchTiles(query.title ?? "", 1)
-
-    return App.createPagedResults({
-      results,
-      metadata: undefined
-    })
-  }
-
-  // ------------------------------------------------------------
-  // HOMEPAGE SECTIONS (Fixed Rows)
-  // ------------------------------------------------------------
-  async getHomePageSections(sectionCallback: (section: HomeSection) => void): Promise<void> {
-
-    // Row 1 — Recently Updated
-    const recent = App.createHomeSection({
-      id: "recent",
-      title: "Recently Updated",
-      type: "singleRowNormal",
-      items: [],
-      containsMoreItems: false
-    })
-    sectionCallback(recent)
-
-    recent.items = await this.fetchTiles("", 1)
-    sectionCallback(recent)
-
-    // Row 2 — Random Picks
-    const random = App.createHomeSection({
-      id: "random",
-      title: "Random Picks",
-      type: "singleRowNormal",
-      items: [],
-      containsMoreItems: false
-    })
-    sectionCallback(random)
-
-    random.items = await this.fetchTiles(" ", 1) // space triggers random
-    sectionCallback(random)
+  async getChapterDetails(): Promise<ChapterDetails> {
+    return App.createChapterDetails({ id: "", mangaId: "", pages: [] })
   }
 
   async getTags(): Promise<TagSection[]> {
