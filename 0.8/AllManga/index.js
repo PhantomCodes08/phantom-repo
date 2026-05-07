@@ -1,0 +1,717 @@
+(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Sources = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.BadgeColor = void 0;
+var BadgeColor;
+(function (BadgeColor) {
+    BadgeColor["BLUE"] = "default";
+    BadgeColor["GREEN"] = "success";
+    BadgeColor["GREY"] = "info";
+    BadgeColor["YELLOW"] = "warning";
+    BadgeColor["RED"] = "danger";
+})(BadgeColor = exports.BadgeColor || (exports.BadgeColor = {}));
+
+},{}],2:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],3:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.HomeSectionType = void 0;
+var HomeSectionType;
+(function (HomeSectionType) {
+    HomeSectionType["singleRowNormal"] = "singleRowNormal";
+    HomeSectionType["singleRowLarge"] = "singleRowLarge";
+    HomeSectionType["doubleRow"] = "doubleRow";
+    HomeSectionType["featured"] = "featured";
+})(HomeSectionType = exports.HomeSectionType || (exports.HomeSectionType = {}));
+
+},{}],4:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],5:[function(require,module,exports){
+"use strict";
+/**
+ * Request objects hold information for a particular source (see sources for example)
+ * This allows us to to use a generic api to make the calls against any source
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.urlEncodeObject = exports.convertTime = exports.Source = void 0;
+/**
+* @deprecated Use {@link PaperbackExtensionBase}
+*/
+class Source {
+    constructor(cheerio) {
+        this.cheerio = cheerio;
+    }
+    /**
+     * @deprecated use {@link Source.getSearchResults getSearchResults} instead
+     */
+    searchRequest(query, metadata) {
+        return this.getSearchResults(query, metadata);
+    }
+    /**
+     * @deprecated use {@link Source.getSearchTags} instead
+     */
+    async getTags() {
+        // @ts-ignore
+        return this.getSearchTags?.();
+    }
+}
+exports.Source = Source;
+// Many sites use '[x] time ago' - Figured it would be good to handle these cases in general
+function convertTime(timeAgo) {
+    let time;
+    let trimmed = Number((/\d*/.exec(timeAgo) ?? [])[0]);
+    trimmed = (trimmed == 0 && timeAgo.includes('a')) ? 1 : trimmed;
+    if (timeAgo.includes('minutes')) {
+        time = new Date(Date.now() - trimmed * 60000);
+    }
+    else if (timeAgo.includes('hours')) {
+        time = new Date(Date.now() - trimmed * 3600000);
+    }
+    else if (timeAgo.includes('days')) {
+        time = new Date(Date.now() - trimmed * 86400000);
+    }
+    else if (timeAgo.includes('year') || timeAgo.includes('years')) {
+        time = new Date(Date.now() - trimmed * 31556952000);
+    }
+    else {
+        time = new Date(Date.now());
+    }
+    return time;
+}
+exports.convertTime = convertTime;
+/**
+ * When a function requires a POST body, it always should be defined as a JsonObject
+ * and then passed through this function to ensure that it's encoded properly.
+ * @param obj
+ */
+function urlEncodeObject(obj) {
+    let ret = {};
+    for (const entry of Object.entries(obj)) {
+        ret[encodeURIComponent(entry[0])] = encodeURIComponent(entry[1]);
+    }
+    return ret;
+}
+exports.urlEncodeObject = urlEncodeObject;
+
+},{}],6:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ContentRating = exports.SourceIntents = void 0;
+var SourceIntents;
+(function (SourceIntents) {
+    SourceIntents[SourceIntents["MANGA_CHAPTERS"] = 1] = "MANGA_CHAPTERS";
+    SourceIntents[SourceIntents["MANGA_TRACKING"] = 2] = "MANGA_TRACKING";
+    SourceIntents[SourceIntents["HOMEPAGE_SECTIONS"] = 4] = "HOMEPAGE_SECTIONS";
+    SourceIntents[SourceIntents["COLLECTION_MANAGEMENT"] = 8] = "COLLECTION_MANAGEMENT";
+    SourceIntents[SourceIntents["CLOUDFLARE_BYPASS_REQUIRED"] = 16] = "CLOUDFLARE_BYPASS_REQUIRED";
+    SourceIntents[SourceIntents["SETTINGS_UI"] = 32] = "SETTINGS_UI";
+})(SourceIntents = exports.SourceIntents || (exports.SourceIntents = {}));
+/**
+ * A content rating to be attributed to each source.
+ */
+var ContentRating;
+(function (ContentRating) {
+    ContentRating["EVERYONE"] = "EVERYONE";
+    ContentRating["MATURE"] = "MATURE";
+    ContentRating["ADULT"] = "ADULT";
+})(ContentRating = exports.ContentRating || (exports.ContentRating = {}));
+
+},{}],7:[function(require,module,exports){
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+__exportStar(require("./Source"), exports);
+__exportStar(require("./ByteArray"), exports);
+__exportStar(require("./Badge"), exports);
+__exportStar(require("./interfaces"), exports);
+__exportStar(require("./SourceInfo"), exports);
+__exportStar(require("./HomeSectionType"), exports);
+__exportStar(require("./PaperbackExtensionBase"), exports);
+
+},{"./Badge":1,"./ByteArray":2,"./HomeSectionType":3,"./PaperbackExtensionBase":4,"./Source":5,"./SourceInfo":6,"./interfaces":15}],8:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],9:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],10:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],11:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],12:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],13:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],14:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],15:[function(require,module,exports){
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+__exportStar(require("./ChapterProviding"), exports);
+__exportStar(require("./CloudflareBypassRequestProviding"), exports);
+__exportStar(require("./HomePageSectionsProviding"), exports);
+__exportStar(require("./MangaProgressProviding"), exports);
+__exportStar(require("./MangaProviding"), exports);
+__exportStar(require("./RequestManagerProviding"), exports);
+__exportStar(require("./SearchResultsProviding"), exports);
+
+},{"./ChapterProviding":8,"./CloudflareBypassRequestProviding":9,"./HomePageSectionsProviding":10,"./MangaProgressProviding":11,"./MangaProviding":12,"./RequestManagerProviding":13,"./SearchResultsProviding":14}],16:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],17:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],18:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],19:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],20:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],21:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],22:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],23:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],24:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],25:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],26:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],27:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],28:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],29:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],30:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],31:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],32:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],33:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],34:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],35:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],36:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],37:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],38:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],39:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],40:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],41:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],42:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],43:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],44:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],45:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],46:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],47:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],48:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],49:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],50:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],51:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],52:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],53:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],54:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],55:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],56:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],57:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],58:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],59:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+
+},{}],60:[function(require,module,exports){
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+__exportStar(require("./DynamicUI/Exports/DUIBinding"), exports);
+__exportStar(require("./DynamicUI/Exports/DUIForm"), exports);
+__exportStar(require("./DynamicUI/Exports/DUIFormRow"), exports);
+__exportStar(require("./DynamicUI/Exports/DUISection"), exports);
+__exportStar(require("./DynamicUI/Rows/Exports/DUIButton"), exports);
+__exportStar(require("./DynamicUI/Rows/Exports/DUIHeader"), exports);
+__exportStar(require("./DynamicUI/Rows/Exports/DUIInputField"), exports);
+__exportStar(require("./DynamicUI/Rows/Exports/DUILabel"), exports);
+__exportStar(require("./DynamicUI/Rows/Exports/DUILink"), exports);
+__exportStar(require("./DynamicUI/Rows/Exports/DUIMultilineLabel"), exports);
+__exportStar(require("./DynamicUI/Rows/Exports/DUINavigationButton"), exports);
+__exportStar(require("./DynamicUI/Rows/Exports/DUIOAuthButton"), exports);
+__exportStar(require("./DynamicUI/Rows/Exports/DUISecureInputField"), exports);
+__exportStar(require("./DynamicUI/Rows/Exports/DUISelect"), exports);
+__exportStar(require("./DynamicUI/Rows/Exports/DUIStepper"), exports);
+__exportStar(require("./DynamicUI/Rows/Exports/DUISwitch"), exports);
+__exportStar(require("./Exports/ChapterDetails"), exports);
+__exportStar(require("./Exports/Chapter"), exports);
+__exportStar(require("./Exports/Cookie"), exports);
+__exportStar(require("./Exports/HomeSection"), exports);
+__exportStar(require("./Exports/IconText"), exports);
+__exportStar(require("./Exports/MangaInfo"), exports);
+__exportStar(require("./Exports/MangaProgress"), exports);
+__exportStar(require("./Exports/PartialSourceManga"), exports);
+__exportStar(require("./Exports/MangaUpdates"), exports);
+__exportStar(require("./Exports/PBCanvas"), exports);
+__exportStar(require("./Exports/PBImage"), exports);
+__exportStar(require("./Exports/PagedResults"), exports);
+__exportStar(require("./Exports/RawData"), exports);
+__exportStar(require("./Exports/Request"), exports);
+__exportStar(require("./Exports/SourceInterceptor"), exports);
+__exportStar(require("./Exports/RequestManager"), exports);
+__exportStar(require("./Exports/Response"), exports);
+__exportStar(require("./Exports/SearchField"), exports);
+__exportStar(require("./Exports/SearchRequest"), exports);
+__exportStar(require("./Exports/SourceCookieStore"), exports);
+__exportStar(require("./Exports/SourceManga"), exports);
+__exportStar(require("./Exports/SecureStateManager"), exports);
+__exportStar(require("./Exports/SourceStateManager"), exports);
+__exportStar(require("./Exports/Tag"), exports);
+__exportStar(require("./Exports/TagSection"), exports);
+__exportStar(require("./Exports/TrackedMangaChapterReadAction"), exports);
+__exportStar(require("./Exports/TrackerActionQueue"), exports);
+
+},{"./DynamicUI/Exports/DUIBinding":17,"./DynamicUI/Exports/DUIForm":18,"./DynamicUI/Exports/DUIFormRow":19,"./DynamicUI/Exports/DUISection":20,"./DynamicUI/Rows/Exports/DUIButton":21,"./DynamicUI/Rows/Exports/DUIHeader":22,"./DynamicUI/Rows/Exports/DUIInputField":23,"./DynamicUI/Rows/Exports/DUILabel":24,"./DynamicUI/Rows/Exports/DUILink":25,"./DynamicUI/Rows/Exports/DUIMultilineLabel":26,"./DynamicUI/Rows/Exports/DUINavigationButton":27,"./DynamicUI/Rows/Exports/DUIOAuthButton":28,"./DynamicUI/Rows/Exports/DUISecureInputField":29,"./DynamicUI/Rows/Exports/DUISelect":30,"./DynamicUI/Rows/Exports/DUIStepper":31,"./DynamicUI/Rows/Exports/DUISwitch":32,"./Exports/Chapter":33,"./Exports/ChapterDetails":34,"./Exports/Cookie":35,"./Exports/HomeSection":36,"./Exports/IconText":37,"./Exports/MangaInfo":38,"./Exports/MangaProgress":39,"./Exports/MangaUpdates":40,"./Exports/PBCanvas":41,"./Exports/PBImage":42,"./Exports/PagedResults":43,"./Exports/PartialSourceManga":44,"./Exports/RawData":45,"./Exports/Request":46,"./Exports/RequestManager":47,"./Exports/Response":48,"./Exports/SearchField":49,"./Exports/SearchRequest":50,"./Exports/SecureStateManager":51,"./Exports/SourceCookieStore":52,"./Exports/SourceInterceptor":53,"./Exports/SourceManga":54,"./Exports/SourceStateManager":55,"./Exports/Tag":56,"./Exports/TagSection":57,"./Exports/TrackedMangaChapterReadAction":58,"./Exports/TrackerActionQueue":59}],61:[function(require,module,exports){
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+__exportStar(require("./generated/_exports"), exports);
+__exportStar(require("./base/index"), exports);
+__exportStar(require("./compat/DyamicUI"), exports);
+
+},{"./base/index":7,"./compat/DyamicUI":16,"./generated/_exports":60}],62:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.AllManga = exports.AllMangaInfo = void 0;
+const types_1 = require("@paperback/types");
+const SITE = "https://allmanga.to";
+const API_MIRRORS = [
+    "https://api.allanime.day/api",
+    "https://api.allanime.to/api",
+    "https://api.allanime.site/api",
+    "https://api.allanime.cc/api",
+    "https://api.allanime.xyz/api"
+];
+// Correct hashes
+const HASH_SEARCH = "2d48e19fb67ddcac42fbb885204b6abb0a84f406f15ef83f36de4a66f49f651a";
+const HASH_RANDOM = "23ea909e23c92fc54cd37121d5ada5e3b32297837c094b4ea982407d0669081e";
+// Chapter list hash
+const HASH_CHAPTER_LIST = "ae7b2ed82ce3bf6fe9af426372174468958a066694167e6800bfcb3fcbdbb460";
+// Chapter pages hash
+const HASH_CHAPTER_PAGES = "466783e19a7540387e34265be906bebbe853857088d45d28af922ab8668ebb31";
+exports.AllMangaInfo = {
+    version: "0.3.1",
+    name: "AllManga",
+    icon: "icon.png",
+    author: "Phantom",
+    description: "AllManga source using AllAnime backend.",
+    contentRating: types_1.ContentRating.MATURE,
+    websiteBaseURL: SITE,
+    sourceTags: [],
+    intents: types_1.SourceIntents.MANGA_CHAPTERS |
+        types_1.SourceIntents.HOMEPAGE_SECTIONS |
+        types_1.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED
+};
+class AllManga extends types_1.Source {
+    constructor() {
+        super(...arguments);
+        this.requestManager = App.createRequestManager({
+            requestsPerSecond: 1,
+            requestTimeout: 20000
+        });
+    }
+    getMangaShareUrl(mangaId) {
+        return `${SITE}/manga/${mangaId}`;
+    }
+    // ⭐ Bulletproof thumbnail handler
+    cover(path) {
+        if (!path || path.trim() === "")
+            return "https://allmanga.to/assets/logo512.png";
+        const clean = path.split("?")[0];
+        return clean.trim();
+    }
+    // ⭐ English‑preferred title logic
+    titleFor(m) {
+        if (m.englishName && m.englishName.trim() !== "")
+            return m.englishName.trim();
+        if (m.name && m.name.trim() !== "")
+            return m.name.trim();
+        if (m.nativeName && m.nativeName.trim() !== "")
+            return m.nativeName.trim();
+        return "Untitled";
+    }
+    // ------------------------------------------------------------
+    // MIRROR FAILOVER
+    // ------------------------------------------------------------
+    async tryMirrors(urlBuilder) {
+        for (const base of API_MIRRORS) {
+            const url = urlBuilder(base);
+            try {
+                const request = App.createRequest({
+                    url,
+                    method: "GET",
+                    headers: {
+                        Referer: `${SITE}/`,
+                        Origin: SITE,
+                        "User-Agent": "Mozilla/5.0",
+                        "Accept": "application/json"
+                    }
+                });
+                const response = await this.requestManager.schedule(request, 1);
+                JSON.parse(response.data);
+                return response.data;
+            }
+            catch (_) {
+                continue;
+            }
+        }
+        throw new Error("All mirrors failed");
+    }
+    // ------------------------------------------------------------
+    // SEARCH
+    // ------------------------------------------------------------
+    async fetchSearch(keyword) {
+        const variables = {
+            search: { query: keyword, isManga: true },
+            limit: 26,
+            page: 1,
+            translationType: "sub",
+            countryOrigin: "ALL"
+        };
+        const jsonString = await this.tryMirrors((base) => `${base}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify({
+            persistedQuery: { version: 1, sha256Hash: HASH_SEARCH }
+        }))}`);
+        const parsed = JSON.parse(jsonString);
+        const edges = parsed?.data?.mangas?.edges ?? [];
+        return edges.map((m) => App.createPartialSourceManga({
+            mangaId: m._id,
+            image: this.cover(m.thumbnail),
+            title: this.titleFor(m),
+            subtitle: m.nativeName || "AllManga"
+        }));
+    }
+    // ------------------------------------------------------------
+    // RANDOM PICKS
+    // ------------------------------------------------------------
+    async fetchRandom() {
+        const variables = {
+            search: { sortBy: "Random" },
+            limit: 26,
+            page: 1,
+            translationType: "sub",
+            countryOrigin: "ALL"
+        };
+        const jsonString = await this.tryMirrors((base) => `${base}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify({
+            persistedQuery: { version: 1, sha256Hash: HASH_RANDOM }
+        }))}`);
+        const parsed = JSON.parse(jsonString);
+        const edges = parsed?.data?.mangas?.edges ?? [];
+        return edges.map((m) => App.createPartialSourceManga({
+            mangaId: m._id,
+            image: this.cover(m.thumbnail),
+            title: this.titleFor(m),
+            subtitle: m.nativeName || "AllManga"
+        }));
+    }
+    // ------------------------------------------------------------
+    // HOMEPAGE
+    // ------------------------------------------------------------
+    async fetchHomepageTiles() {
+        return await this.fetchSearch("");
+    }
+    async getSearchResults(query) {
+        const results = await this.fetchSearch(query.title ?? "");
+        return App.createPagedResults({ results });
+    }
+    // ------------------------------------------------------------
+    // HOMEPAGE SECTIONS (two rows + random)
+    // ------------------------------------------------------------
+    async getHomePageSections(sectionCallback) {
+        const results = await this.fetchHomepageTiles();
+        const half = Math.ceil(results.length / 2);
+        const row1Items = results.slice(0, half);
+        const row2Items = results.slice(half);
+        // Row 1
+        const recent1 = App.createHomeSection({
+            id: "recent_1",
+            title: "Recently Updated (1)",
+            type: "singleRowNormal",
+            items: [],
+            containsMoreItems: false
+        });
+        sectionCallback(recent1);
+        recent1.items = row1Items;
+        sectionCallback(recent1);
+        // Row 2
+        const recent2 = App.createHomeSection({
+            id: "recent_2",
+            title: "Recently Updated (2)",
+            type: "singleRowNormal",
+            items: [],
+            containsMoreItems: false
+        });
+        sectionCallback(recent2);
+        recent2.items = row2Items;
+        sectionCallback(recent2);
+        // Random Picks
+        const random = App.createHomeSection({
+            id: "random",
+            title: "Random Picks",
+            type: "singleRowNormal",
+            items: [],
+            containsMoreItems: false
+        });
+        sectionCallback(random);
+        random.items = await this.fetchRandom();
+        sectionCallback(random);
+    }
+    // ------------------------------------------------------------
+    // MANGA DETAILS
+    // ------------------------------------------------------------
+    async getMangaDetails(mangaId) {
+        return App.createSourceManga({
+            id: mangaId,
+            mangaInfo: App.createMangaInfo({
+                titles: [mangaId],
+                image: "https://allmanga.to/assets/logo512.png",
+                desc: "Details not implemented yet.",
+                status: "ONGOING"
+            })
+        });
+    }
+    // ------------------------------------------------------------
+    // CHAPTER LIST
+    // ------------------------------------------------------------
+    async getChapters(mangaId) {
+        const variables = {
+            showId: `manga@${mangaId}`,
+            episodeNumStart: 0,
+            episodeNumEnd: 500
+        };
+        const jsonString = await this.tryMirrors((base) => `${base}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify({
+            persistedQuery: {
+                version: 1,
+                sha256Hash: HASH_CHAPTER_LIST
+            }
+        }))}`);
+        const parsed = JSON.parse(jsonString);
+        const eps = parsed?.data?.show?.episodes ?? [];
+        return eps.map((ep) => App.createChapter({
+            id: ep.episodeId,
+            mangaId,
+            chapNum: parseFloat(ep.episodeNum),
+            name: ep.title || `Chapter ${ep.episodeNum}`,
+            time: new Date()
+        }));
+    }
+    // ------------------------------------------------------------
+    // CHAPTER PAGES
+    // ------------------------------------------------------------
+    async getChapterDetails(mangaId, chapterId) {
+        const variables = {
+            mangaId,
+            translationType: "sub",
+            chapterString: chapterId,
+            limit: 500,
+            offset: 0
+        };
+        const jsonString = await this.tryMirrors((base) => `${base}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify({
+            persistedQuery: {
+                version: 1,
+                sha256Hash: HASH_CHAPTER_PAGES
+            }
+        }))}`);
+        const parsed = JSON.parse(jsonString);
+        const pages = parsed?.data?.manga?.chapter?.pages?.map((p) => p.img) ?? [];
+        return App.createChapterDetails({
+            id: chapterId,
+            mangaId,
+            pages
+        });
+    }
+    async getTags() {
+        return [];
+    }
+}
+exports.AllManga = AllManga;
+
+},{"@paperback/types":61}]},{},[62])(62)
+});
