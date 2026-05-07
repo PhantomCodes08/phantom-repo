@@ -34,7 +34,7 @@ const HASH_SEARCH = "2d48e19fb67ddcac42fbb885204b6abb0a84f406f15ef83f36de4a66f49
 const HASH_RANDOM = "23ea909e23c92fc54cd37121d5ada5e3b32297837c094b4ea982407d0669081e"
 
 export const AllMangaInfo: SourceInfo = {
-  version: "0.2.7",
+  version: "0.2.8",
   name: "AllManga",
   icon: "icon.png",
   author: "Phantom",
@@ -59,12 +59,10 @@ export class AllManga extends Source {
     return `${SITE}/manga/${mangaId}`
   }
 
-  private cover(path?: string | null): string {
-    if (!path) return "https://via.placeholder.com/256?text=No+Cover"
-    if (path.startsWith("http")) return encodeURI(path)
-    return encodeURI(`${COVER_CDN}/${path.replace(/^\/+/, "")}`)
-  }
-
+ private cover(path?: string | null): string {
+  if (!path) return "https://via.placeholder.com/256?text=No+Cover"
+  return path // trust the API
+}
   // ------------------------------------------------------------
   // MIRROR FAILOVER
   // ------------------------------------------------------------
@@ -178,32 +176,53 @@ export class AllManga extends Source {
   // ------------------------------------------------------------
   async getHomePageSections(sectionCallback: (section: HomeSection) => void): Promise<void> {
 
-    // ⭐ Row 1 — Recently Updated
-    const recent = App.createHomeSection({
-      id: "recent",
-      title: "Recently Updated",
-      type: "singleRowNormal",
-      items: [],
-      containsMoreItems: false
-    })
-    sectionCallback(recent)
+  // Fetch homepage tiles once
+  const results = await this.fetchHomepageTiles()
+  const half = Math.ceil(results.length / 2)
 
-    recent.items = await this.fetchHomepageTiles()
-    sectionCallback(recent)
+  const row1Items = results.slice(0, half)
+  const row2Items = results.slice(half)
 
-    // ⭐ Row 2 — Random Picks
-    const random = App.createHomeSection({
-      id: "random",
-      title: "Random Picks",
-      type: "singleRowNormal",
-      items: [],
-      containsMoreItems: false
-    })
-    sectionCallback(random)
+  // ⭐ Recently Updated — Row 1
+  const recent1 = App.createHomeSection({
+    id: "recent_1",
+    title: "Recently Updated (1)",
+    type: "singleRowNormal",
+    items: [],
+    containsMoreItems: false
+  })
+  sectionCallback(recent1)
 
-    random.items = await this.fetchRandom()
-    sectionCallback(random)
-  }
+  recent1.items = row1Items
+  sectionCallback(recent1)
+
+  // ⭐ Recently Updated — Row 2
+  const recent2 = App.createHomeSection({
+    id: "recent_2",
+    title: "Recently Updated (2)",
+    type: "singleRowNormal",
+    items: [],
+    containsMoreItems: false
+  })
+  sectionCallback(recent2)
+
+  recent2.items = row2Items
+  sectionCallback(recent2)
+
+  // ⭐ Random Picks
+  const random = App.createHomeSection({
+    id: "random",
+    title: "Random Picks",
+    type: "singleRowNormal",
+    items: [],
+    containsMoreItems: false
+  })
+  sectionCallback(random)
+
+  random.items = await this.fetchRandom()
+  sectionCallback(random)
+}
+
 
   async getMangaDetails(mangaId: string) {
     return App.createSourceManga({
