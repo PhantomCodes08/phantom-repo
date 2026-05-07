@@ -32,10 +32,9 @@ const COVER_CDN = "https://wp.youtube-anime.com"
 // ⭐ Correct hashes
 const HASH_SEARCH = "2d48e19fb67ddcac42fbb885204b6abb0a84f406f15ef83f36de4a66f49f651a"
 const HASH_RANDOM = "23ea909e23c92fc54cd37121d5ada5e3b32297837c094b4ea982407d0669081e"
-const HASH_HOME = "fbd24de3aec73d35332185b621beec15396aaf8e8ae00183ddac6c19fbf8adcf"
 
 export const AllMangaInfo: SourceInfo = {
-  version: "0.2.5",
+  version: "0.2.6",
   name: "AllManga",
   icon: "icon.png",
   author: "Phantom",
@@ -147,7 +146,7 @@ export class AllManga extends Source {
     )
 
     const parsed = JSON.parse(jsonString) as AllMangaSearchResponse
-    const edges = parsed?.data?.shows?.edges ?? []
+    const edges = parsed?.data?.mangas?.edges ?? []
 
     return edges.map((m: AllMangaSearchResult) =>
       App.createPartialSourceManga({
@@ -160,39 +159,10 @@ export class AllManga extends Source {
   }
 
   // ------------------------------------------------------------
-  // HOMEPAGE (correct + complete variables)
+  // HOMEPAGE (RESTORED: search("", 1))
   // ------------------------------------------------------------
-  private async fetchHome(): Promise<PartialSourceManga[]> {
-    const variables = {
-      search: {
-        format: "manga",
-        queryType: "Home",
-        allowUnknown: false,
-        allowAdult: false
-      },
-      limit: 26,
-      page: 1,
-      translationType: "sub",
-      countryOrigin: "ALL"
-    }
-
-    const jsonString = await this.tryMirrors((base) =>
-      `${base}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify({
-        persistedQuery: { version: 1, sha256Hash: HASH_HOME }
-      }))}`
-    )
-
-    const parsed = JSON.parse(jsonString) as AllMangaSearchResponse
-    const edges = parsed?.data?.shows?.edges ?? []
-
-    return edges.map((m: AllMangaSearchResult) =>
-      App.createPartialSourceManga({
-        mangaId: m._id!,
-        image: this.cover(m.thumbnail),
-        title: m.englishName || m.name || m.nativeName || "Unknown Title",
-        subtitle: m.nativeName || "AllManga"
-      })
-    )
+  private async fetchHomepageTiles(): Promise<PartialSourceManga[]> {
+    return await this.fetchSearch("")
   }
 
   // ------------------------------------------------------------
@@ -204,11 +174,11 @@ export class AllManga extends Source {
   }
 
   // ------------------------------------------------------------
-  // HOMEPAGE SECTIONS
+  // HOMEPAGE SECTIONS (RESTORED)
   // ------------------------------------------------------------
   async getHomePageSections(sectionCallback: (section: HomeSection) => void): Promise<void> {
 
-    // ⭐ Row 1 — Recently Updated
+    // ⭐ Row 1 — Recently Updated (search(""))
     const recent = App.createHomeSection({
       id: "recent",
       title: "Recently Updated",
@@ -218,7 +188,7 @@ export class AllManga extends Source {
     })
     sectionCallback(recent)
 
-    recent.items = await this.fetchHome()
+    recent.items = await this.fetchHomepageTiles()
     sectionCallback(recent)
 
     // ⭐ Row 2 — Random Picks
