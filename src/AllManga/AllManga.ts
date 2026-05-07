@@ -35,7 +35,7 @@ const HASH_RANDOM = "23ea909e23c92fc54cd37121d5ada5e3b32297837c094b4ea982407d066
 const HASH_HOME = "fbd24de3aec73d35332185b621beec15396aaf8e8ae00183ddac6c19fbf8adcf"
 
 export const AllMangaInfo: SourceInfo = {
-  version: "0.2.4",
+  version: "0.2.5",
   name: "AllManga",
   icon: "icon.png",
   author: "Phantom",
