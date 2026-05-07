@@ -463,7 +463,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AllManga = exports.AllMangaInfo = void 0;
 const types_1 = require("@paperback/types");
 const SITE = "https://allmanga.to";
-const API = "https://api.allanime.cc/api";
+const API_MIRRORS = [
+    "https://api.allanime.to/api",
+    "https://api.allanime.site/api",
+    "https://api.allanime.cc/api",
+    "https://api.allanime.xyz/api",
+    "https://api.allanime.day/api"
+];
 const COVER_CDN = "https://wp.youtube-anime.com";
 exports.AllMangaInfo = {
     version: "0.1.9",
@@ -496,48 +502,62 @@ class AllManga extends types_1.Source {
             return encodeURI(path);
         return encodeURI(`${COVER_CDN}/${path.replace(/^\/+/, "")}`);
     }
-    searchUrl(keyword, page) {
-        const variables = {
-            search: {
-                query: keyword.trim(),
-                isManga: true,
-                allowAdult: true,
-                allowUnknown: false
-            },
-            limit: 20,
-            page,
-            translationType: "sub",
-            countryOrigin: "ALL"
-        };
-        const extensions = {
-            persistedQuery: {
-                version: 1,
-                sha256Hash: "d4f3b8c1e2a9f7d6c5b4a392817f6e5d4c3b2a1908f7e6d5c4b3a291817f6e5d"
+    // ------------------------------------------------------------
+    // MIRROR FAILOVER SYSTEM
+    // ------------------------------------------------------------
+    async tryMirrors(urlBuilder) {
+        for (const base of API_MIRRORS) {
+            const url = urlBuilder(base);
+            try {
+                const request = App.createRequest({
+                    url,
+                    method: "GET",
+                    headers: {
+                        Referer: `${SITE}/`,
+                        Origin: SITE,
+                        "User-Agent": "Mozilla/5.0 (Android 13; Mobile; rv:109.0) Gecko/109.0 Firefox/109.0",
+                        "Accept": "application/json",
+                        "Accept-Language": "en-US,en;q=0.9",
+                        "Cache-Control": "no-cache"
+                    }
+                });
+                const response = await this.requestManager.schedule(request, 1);
+                // Validate JSON
+                JSON.parse(response.data);
+                // If JSON parses, this mirror works
+                return response.data;
             }
-        };
-        return `${API}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify(extensions))}`;
+            catch (err) {
+                continue;
+            }
+        }
+        throw new Error("All mirrors failed");
     }
     // ------------------------------------------------------------
-    // API WRAPPER
+    // SEARCH + TILE FETCHING
     // ------------------------------------------------------------
     async fetchTiles(keyword, page) {
         try {
-            const request = App.createRequest({
-                url: this.searchUrl(keyword, page),
-                method: "GET",
-                headers: {
-                    Referer: `${SITE}/`,
-                    Origin: SITE,
-                    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X)",
-                    "Accept": "application/json",
-                    "Accept-Language": "en-US,en;q=0.9",
-                    "Cache-Control": "no-cache"
+            const jsonString = await this.tryMirrors((base) => `${base}?variables=${encodeURIComponent(JSON.stringify({
+                search: {
+                    query: keyword.trim(),
+                    isManga: true,
+                    allowAdult: true,
+                    allowUnknown: false
+                },
+                limit: 20,
+                page,
+                translationType: "sub",
+                countryOrigin: "ALL"
+            }))}&extensions=${encodeURIComponent(JSON.stringify({
+                persistedQuery: {
+                    version: 1,
+                    sha256Hash: "d4f3b8c1e2a9f7d6c5b4a392817f6e5d4c3b2a1908f7e6d5c4b3a291817f6e5d"
                 }
-            });
-            const response = await this.requestManager.schedule(request, 1);
-            const parsed = JSON.parse(response.data);
+            }))}`);
+            const parsed = JSON.parse(jsonString);
             const edges = parsed?.data?.mangas?.edges ?? [];
-            if (!Array.isArray(edges) || edges.length === 0) {
+            if (!edges.length) {
                 return [
                     App.createPartialSourceManga({
                         mangaId: "debug-no-results",
@@ -547,9 +567,7 @@ class AllManga extends types_1.Source {
                     })
                 ];
             }
-            return edges
-                .filter(m => m._id)
-                .map(m => App.createPartialSourceManga({
+            return edges.map((m) => App.createPartialSourceManga({
                 mangaId: m._id,
                 image: this.cover(m.thumbnail),
                 title: m.englishName || m.name || m.nativeName || "Unknown Title",
@@ -568,7 +586,7 @@ class AllManga extends types_1.Source {
         }
     }
     // ------------------------------------------------------------
-    // REQUIRED METHODS
+    // REQUIRED PAPERBACK METHODS
     // ------------------------------------------------------------
     async getMangaDetails(mangaId) {
         return App.createSourceManga({
