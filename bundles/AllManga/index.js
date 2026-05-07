@@ -528,7 +528,11 @@ class AllManga extends types_1.Source {
                 method: "GET",
                 headers: {
                     Referer: `${SITE}/`,
-                    Origin: SITE
+                    Origin: SITE,
+                    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X)",
+                    "Accept": "application/json",
+                    "Accept-Language": "en-US,en;q=0.9",
+                    "Cache-Control": "no-cache"
                 }
             });
             const response = await this.requestManager.schedule(request, 1);

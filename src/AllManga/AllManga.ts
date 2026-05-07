@@ -14,6 +14,7 @@ import {
 
 const SITE = "https://allmanga.to"
 const API = "https://api.allanime.to/api"
+
 const COVER_CDN = "https://wp.youtube-anime.com"
 
 export const AllMangaInfo: SourceInfo = {
@@ -89,15 +90,18 @@ export class AllManga extends Source {
   // ------------------------------------------------------------
   private async fetchTiles(keyword: string, page: number): Promise<PartialSourceManga[]> {
     try {
-      const request = App.createRequest({
-        url: this.searchUrl(keyword, page),
-        method: "GET",
-        headers: {
-          Referer: `${SITE}/`,
-          Origin: SITE
-        }
-      })
-
+     const request = App.createRequest({
+  url: this.searchUrl(keyword, page),
+  method: "GET",
+  headers: {
+    Referer: `${SITE}/`,
+    Origin: SITE,
+    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X)",
+    "Accept": "application/json",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Cache-Control": "no-cache"
+  }
+})
       const response = await this.requestManager.schedule(request, 1)
       const parsed = JSON.parse(response.data as string)
 
