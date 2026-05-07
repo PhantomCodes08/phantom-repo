@@ -29,15 +29,15 @@ const API_MIRRORS = [
 
 const COVER_CDN = "https://wp.youtube-anime.com"
 
-// NEW WORKING HASH (from your URL)
+// The ONE TRUE HASH used for ALL search + homepage queries
 const HASH = "2d48e19fb67ddcac42fbb885204b6abb0a84f406f15ef83f36de4a66f49f651a"
 
 export const AllMangaInfo: SourceInfo = {
-  version: "0.2.0",
+  version: "0.2.1",
   name: "AllManga",
   icon: "icon.png",
   author: "Phantom",
-  description: "AllManga source using updated AllAnime API schema.",
+  description: "Fully updated AllManga source using AllAnime backend.",
   contentRating: ContentRating.MATURE,
   websiteBaseURL: SITE,
   sourceTags: [],
@@ -101,32 +101,20 @@ export class AllManga extends Source {
   }
 
   // ------------------------------------------------------------
-  // SEARCH + TILE FETCHING (NEW SCHEMA)
+  // SEARCH + HOMEPAGE FETCHER (Unified Schema)
   // ------------------------------------------------------------
   private async fetchTiles(keyword: string, page: number): Promise<PartialSourceManga[]> {
     try {
-      const variables = keyword.trim()
-        ? {
-            search: {
-              query: keyword.trim(),
-              isManga: true,
-              sortBy: "Relevance"
-            },
-            limit: 20,
-            page,
-            translationType: "sub",
-            countryOrigin: "ALL"
-          }
-        : {
-            search: {
-              sortBy: "Recent",
-              isManga: true
-            },
-            limit: 26,
-            page,
-            translationType: "sub",
-            countryOrigin: "ALL"
-          }
+      const variables = {
+        search: {
+          isManga: true,
+          ...(keyword.trim() ? { query: keyword.trim() } : {})
+        },
+        limit: keyword.trim() ? 26 : 26,
+        page,
+        translationType: "sub",
+        countryOrigin: "ALL"
+      }
 
       const jsonString = await this.tryMirrors((base) =>
         `${base}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify({
@@ -138,14 +126,16 @@ export class AllManga extends Source {
       )
 
       const parsed = JSON.parse(jsonString) as AllMangaSearchResponse
-      const edges: AllMangaSearchResult[] = parsed?.data?.mangas?.edges ?? []
+
+      // THE CORRECT FIELD NAME
+      const edges: AllMangaSearchResult[] = parsed?.data?.shows?.edges ?? []
 
       if (!edges.length) {
         return [
           App.createPartialSourceManga({
             mangaId: "debug-no-results",
             image: "https://via.placeholder.com/256?text=No+Results",
-            title: "API returned zero items",
+            title: "No results",
             subtitle: `keyword="${keyword}" page=${page}`
           })
         ]
@@ -199,6 +189,9 @@ export class AllManga extends Source {
     })
   }
 
+  // ------------------------------------------------------------
+  // SEARCH RESULTS
+  // ------------------------------------------------------------
   async getSearchResults(query: SearchRequest, metadata: any): Promise<PagedResults> {
     const results = await this.fetchTiles(query.title ?? "", 1)
 
@@ -208,21 +201,36 @@ export class AllManga extends Source {
     })
   }
 
+  // ------------------------------------------------------------
+  // HOMEPAGE SECTIONS (Fixed Rows)
+  // ------------------------------------------------------------
   async getHomePageSections(sectionCallback: (section: HomeSection) => void): Promise<void> {
-    const section = App.createHomeSection({
+
+    // Row 1 — Recently Updated
+    const recent = App.createHomeSection({
       id: "recent",
       title: "Recently Updated",
       type: "singleRowNormal",
       items: [],
       containsMoreItems: false
     })
+    sectionCallback(recent)
 
-    sectionCallback(section)
+    recent.items = await this.fetchTiles("", 1)
+    sectionCallback(recent)
 
-    const results = await this.fetchTiles("", 1)
-    section.items = results
+    // Row 2 — Random Picks
+    const random = App.createHomeSection({
+      id: "random",
+      title: "Random Picks",
+      type: "singleRowNormal",
+      items: [],
+      containsMoreItems: false
+    })
+    sectionCallback(random)
 
-    sectionCallback(section)
+    random.items = await this.fetchTiles(" ", 1) // space triggers random
+    sectionCallback(random)
   }
 
   async getTags(): Promise<TagSection[]> {

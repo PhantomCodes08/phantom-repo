@@ -471,14 +471,14 @@ const API_MIRRORS = [
     "https://api.allanime.xyz/api"
 ];
 const COVER_CDN = "https://wp.youtube-anime.com";
-// NEW WORKING HASH (from your URL)
+// The ONE TRUE HASH used for ALL search + homepage queries
 const HASH = "2d48e19fb67ddcac42fbb885204b6abb0a84f406f15ef83f36de4a66f49f651a";
 exports.AllMangaInfo = {
-    version: "0.2.0",
+    version: "0.2.1",
     name: "AllManga",
     icon: "icon.png",
     author: "Phantom",
-    description: "AllManga source using updated AllAnime API schema.",
+    description: "Fully updated AllManga source using AllAnime backend.",
     contentRating: types_1.ContentRating.MATURE,
     websiteBaseURL: SITE,
     sourceTags: [],
@@ -535,32 +535,20 @@ class AllManga extends types_1.Source {
         throw new Error("All mirrors failed");
     }
     // ------------------------------------------------------------
-    // SEARCH + TILE FETCHING (NEW SCHEMA)
+    // SEARCH + HOMEPAGE FETCHER (Unified Schema)
     // ------------------------------------------------------------
     async fetchTiles(keyword, page) {
         try {
-            const variables = keyword.trim()
-                ? {
-                    search: {
-                        query: keyword.trim(),
-                        isManga: true,
-                        sortBy: "Relevance"
-                    },
-                    limit: 20,
-                    page,
-                    translationType: "sub",
-                    countryOrigin: "ALL"
-                }
-                : {
-                    search: {
-                        sortBy: "Recent",
-                        isManga: true
-                    },
-                    limit: 26,
-                    page,
-                    translationType: "sub",
-                    countryOrigin: "ALL"
-                };
+            const variables = {
+                search: {
+                    isManga: true,
+                    ...(keyword.trim() ? { query: keyword.trim() } : {})
+                },
+                limit: keyword.trim() ? 26 : 26,
+                page,
+                translationType: "sub",
+                countryOrigin: "ALL"
+            };
             const jsonString = await this.tryMirrors((base) => `${base}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify({
                 persistedQuery: {
                     version: 1,
@@ -568,13 +556,14 @@ class AllManga extends types_1.Source {
                 }
             }))}`);
             const parsed = JSON.parse(jsonString);
-            const edges = parsed?.data?.mangas?.edges ?? [];
+            // THE CORRECT FIELD NAME
+            const edges = parsed?.data?.shows?.edges ?? [];
             if (!edges.length) {
                 return [
                     App.createPartialSourceManga({
                         mangaId: "debug-no-results",
                         image: "https://via.placeholder.com/256?text=No+Results",
-                        title: "API returned zero items",
+                        title: "No results",
                         subtitle: `keyword="${keyword}" page=${page}`
                     })
                 ];
@@ -621,6 +610,9 @@ class AllManga extends types_1.Source {
             pages: []
         });
     }
+    // ------------------------------------------------------------
+    // SEARCH RESULTS
+    // ------------------------------------------------------------
     async getSearchResults(query, metadata) {
         const results = await this.fetchTiles(query.title ?? "", 1);
         return App.createPagedResults({
@@ -628,18 +620,32 @@ class AllManga extends types_1.Source {
             metadata: undefined
         });
     }
+    // ------------------------------------------------------------
+    // HOMEPAGE SECTIONS (Fixed Rows)
+    // ------------------------------------------------------------
     async getHomePageSections(sectionCallback) {
-        const section = App.createHomeSection({
+        // Row 1 — Recently Updated
+        const recent = App.createHomeSection({
             id: "recent",
             title: "Recently Updated",
             type: "singleRowNormal",
             items: [],
             containsMoreItems: false
         });
-        sectionCallback(section);
-        const results = await this.fetchTiles("", 1);
-        section.items = results;
-        sectionCallback(section);
+        sectionCallback(recent);
+        recent.items = await this.fetchTiles("", 1);
+        sectionCallback(recent);
+        // Row 2 — Random Picks
+        const random = App.createHomeSection({
+            id: "random",
+            title: "Random Picks",
+            type: "singleRowNormal",
+            items: [],
+            containsMoreItems: false
+        });
+        sectionCallback(random);
+        random.items = await this.fetchTiles(" ", 1); // space triggers random
+        sectionCallback(random);
     }
     async getTags() {
         return [];
