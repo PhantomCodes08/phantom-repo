@@ -501,7 +501,7 @@ class AllManga extends types_1.Source {
     cover(path) {
         if (!path)
             return "https://via.placeholder.com/256?text=No+Cover";
-        return path; // trust the API
+        return path.trim();
     }
     // ------------------------------------------------------------
     // MIRROR FAILOVER

@@ -59,10 +59,11 @@ export class AllManga extends Source {
     return `${SITE}/manga/${mangaId}`
   }
 
- private cover(path?: string | null): string {
+private cover(path?: string | null): string {
   if (!path) return "https://via.placeholder.com/256?text=No+Cover"
-  return path // trust the API
+  return path.trim()
 }
+
   // ------------------------------------------------------------
   // MIRROR FAILOVER
   // ------------------------------------------------------------
