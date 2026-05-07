@@ -18,11 +18,11 @@ import {
 } from "./AllMangaTypes"
 
 const SITE = "https://allmanga.to"
-const API = "https://api.allanime.to/api"
+const API = "https://api.allanime.site/api"
 const COVER_CDN = "https://wp.youtube-anime.com"
 
 export const AllMangaInfo: SourceInfo = {
-  version: "0.1.7",
+  version: "0.1.8",
   name: "AllManga",
   icon: "icon.png",
   author: "Phantom",
