@@ -463,7 +463,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AllManga = exports.AllMangaInfo = void 0;
 const types_1 = require("@paperback/types");
 const SITE = "https://allmanga.to";
-const API = "https://api.allanime.day/api";
+const API = "https://api.allanime.to/api";
 const COVER_CDN = "https://wp.youtube-anime.com";
 exports.AllMangaInfo = {
     version: "0.1.6",

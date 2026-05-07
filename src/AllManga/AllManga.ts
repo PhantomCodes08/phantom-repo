@@ -13,7 +13,7 @@ import {
 } from "@paperback/types"
 
 const SITE = "https://allmanga.to"
-const API = "https://api.allanime.day/api"
+const API = "https://api.allanime.to/api"
 const COVER_CDN = "https://wp.youtube-anime.com"
 
 export const AllMangaInfo: SourceInfo = {
