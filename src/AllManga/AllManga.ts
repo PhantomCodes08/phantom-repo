@@ -20,21 +20,24 @@ import {
 const SITE = "https://allmanga.to"
 
 const API_MIRRORS = [
+  "https://api.allanime.day/api",
   "https://api.allanime.to/api",
   "https://api.allanime.site/api",
   "https://api.allanime.cc/api",
-  "https://api.allanime.xyz/api",
-  "https://api.allanime.day/api"
+  "https://api.allanime.xyz/api"
 ]
 
 const COVER_CDN = "https://wp.youtube-anime.com"
 
+// NEW WORKING HASH (from your URL)
+const HASH = "2d48e19fb67ddcac42fbb885204b6abb0a84f406f15ef83f36de4a66f49f651a"
+
 export const AllMangaInfo: SourceInfo = {
-  version: "0.1.9",
+  version: "0.2.0",
   name: "AllManga",
   icon: "icon.png",
   author: "Phantom",
-  description: "Phantom-built AllManga source for Paperback.",
+  description: "AllManga source using updated AllAnime API schema.",
   contentRating: ContentRating.MATURE,
   websiteBaseURL: SITE,
   sourceTags: [],
@@ -87,7 +90,6 @@ export class AllManga extends Source {
         // Validate JSON
         JSON.parse(response.data as string)
 
-        // If JSON parses, this mirror works
         return response.data as string
 
       } catch (err) {
@@ -99,26 +101,38 @@ export class AllManga extends Source {
   }
 
   // ------------------------------------------------------------
-  // SEARCH + TILE FETCHING
+  // SEARCH + TILE FETCHING (NEW SCHEMA)
   // ------------------------------------------------------------
   private async fetchTiles(keyword: string, page: number): Promise<PartialSourceManga[]> {
     try {
+      const variables = keyword.trim()
+        ? {
+            search: {
+              query: keyword.trim(),
+              isManga: true,
+              sortBy: "Relevance"
+            },
+            limit: 20,
+            page,
+            translationType: "sub",
+            countryOrigin: "ALL"
+          }
+        : {
+            search: {
+              sortBy: "Recent",
+              isManga: true
+            },
+            limit: 26,
+            page,
+            translationType: "sub",
+            countryOrigin: "ALL"
+          }
+
       const jsonString = await this.tryMirrors((base) =>
-        `${base}?variables=${encodeURIComponent(JSON.stringify({
-          search: {
-            query: keyword.trim(),
-            isManga: true,
-            allowAdult: true,
-            allowUnknown: false
-          },
-          limit: 20,
-          page,
-          translationType: "sub",
-          countryOrigin: "ALL"
-        }))}&extensions=${encodeURIComponent(JSON.stringify({
+        `${base}?variables=${encodeURIComponent(JSON.stringify(variables))}&extensions=${encodeURIComponent(JSON.stringify({
           persistedQuery: {
             version: 1,
-            sha256Hash: "d4f3b8c1e2a9f7d6c5b4a392817f6e5d4c3b2a1908f7e6d5c4b3a291817f6e5d"
+            sha256Hash: HASH
           }
         }))}`
       )
@@ -167,7 +181,7 @@ export class AllManga extends Source {
       mangaInfo: App.createMangaInfo({
         titles: [mangaId],
         image: "https://via.placeholder.com/256?text=No+Image",
-        desc: "Details parser not connected yet.",
+        desc: "Details parser not implemented yet.",
         status: "UNKNOWN"
       })
     })
@@ -196,8 +210,8 @@ export class AllManga extends Source {
 
   async getHomePageSections(sectionCallback: (section: HomeSection) => void): Promise<void> {
     const section = App.createHomeSection({
-      id: "trending",
-      title: "Trending",
+      id: "recent",
+      title: "Recently Updated",
       type: "singleRowNormal",
       items: [],
       containsMoreItems: false
