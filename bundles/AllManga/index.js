@@ -474,7 +474,7 @@ const COVER_CDN = "https://wp.youtube-anime.com";
 // The ONE TRUE HASH used for ALL search + homepage queries
 const HASH = "2d48e19fb67ddcac42fbb885204b6abb0a84f406f15ef83f36de4a66f49f651a";
 exports.AllMangaInfo = {
-    version: "0.2.2",
+    version: "0.2.3",
     name: "AllManga",
     icon: "icon.png",
     author: "Phantom",

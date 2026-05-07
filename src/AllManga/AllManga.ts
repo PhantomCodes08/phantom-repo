@@ -33,7 +33,7 @@ const COVER_CDN = "https://wp.youtube-anime.com"
 const HASH = "2d48e19fb67ddcac42fbb885204b6abb0a84f406f15ef83f36de4a66f49f651a"
 
 export const AllMangaInfo: SourceInfo = {
-  version: "0.2.2",
+  version: "0.2.3",
   name: "AllManga",
   icon: "icon.png",
   author: "Phantom",
